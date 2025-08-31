@@ -10,12 +10,17 @@ const COOKIE = "dn.sid";
 const SECRET = process.env.SESSION_SECRET;
 const IS_PROD = process.env.NODE_ENV === "production";
 
+// 빌드 시에만 기본값 허용, 프로덕션에서는 반드시 환경 변수 필요
 if (!SECRET) {
-  throw new Error("SESSION_SECRET environment variable is required");
+  if (IS_PROD) {
+    throw new Error("SESSION_SECRET environment variable is required in production");
+  } else {
+    console.warn("⚠️ SESSION_SECRET not set, using development default. Do not use in production!");
+  }
 }
 
-// 이제 SECRET은 확실히 string입니다
-const SESSION_SECRET: string = SECRET;
+// 프로덕션에서는 환경 변수 필수, 개발 환경에서는 기본값 사용
+const SESSION_SECRET: string = SECRET || "dev-secret-not-for-production-use-only-fallback";
 
 /** HMAC 서명/검증 */
 function sign(value: string) {
