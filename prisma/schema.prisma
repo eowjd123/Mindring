@@ -1,0 +1,273 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// -------- Enums --------
+
+/// 작품의 상태
+enum WorkStatus {
+  draft      /// 작업중 (임시저장)
+  completed  /// 완성됨
+}
+
+/// 페이지 콘텐츠 유형
+enum PageContentType {
+  text   /// 텍스트 페이지
+  image  /// 이미지 페이지
+  mixed  /// 텍스트+이미지 혼합
+}
+
+/// 인생그래프 감정 아이콘 종류
+enum Emotion {
+  joy
+  sadness
+  anger
+  fear
+  surprise
+  neutral
+}
+
+/// 그래프 공유 권한
+enum SharePermission {
+  read     /// 읽기만 가능
+  comment  /// 읽기 + 댓글
+  edit     /// 읽기 + 댓글 + 편집
+}
+
+// -------- Models --------
+
+/// 사용자 계정
+model User {
+  userId            String          @id @default(cuid()) @db.Char(25) /// 내부 고유 ID
+  email             String?         @unique @db.VarChar(191)          /// 로그인 이메일 (선택적, 소셜만 사용하는 유저도 있음)
+  passwordHash      String?         @db.VarChar(191)                  /// 비밀번호 해시
+  name              String?         @db.VarChar(191)                  /// 사용자 이름/닉네임
+  avatarUrl         String?         @db.VarChar(512)                  /// 프로필 이미지
+  emailSavedFlag    Boolean         @default(false)                   /// "이메일 저장" 옵션 여부
+  passwordSavedFlag Boolean         @default(false)                   /// "비밀번호 저장" 옵션 여부
+  createdAt         DateTime        @default(now())                   /// 가입일시
+  updatedAt         DateTime        @updatedAt                        /// 최종 수정일시
+
+  socialAccounts    SocialAccount[] /// 연결된 소셜 계정들
+  sessions          Session[]       /// 로그인 세션들
+  works             Work[]          /// 만든 작품들
+  lifeGraphs        LifeGraph[]     /// 작성한 인생그래프
+  lifeGraphTags     LifeGraphTag[]  /// 생성한 태그들
+
+  @@index([email])
+}
+
+/// 소셜 로그인 계정 (카카오, 네이버, 구글, 애플 등)
+model SocialAccount {
+  socialId        String   @id @default(cuid()) @db.Char(25) /// 내부 식별자
+  userId          String   @db.Char(25)                     /// 연결된 User ID
+  provider        String   @db.VarChar(32)                   /// 소셜 제공자명 ('kakao' | 'naver' | 'google' | 'apple')
+  providerUserId  String   @db.VarChar(191)                  /// 소셜 쪽 사용자 ID (subject)
+  email           String?  @db.VarChar(191)                  /// 소셜 계정 이메일 (있을 수도, 없을 수도 있음)
+  displayName     String?  @db.VarChar(191)                  /// 소셜 프로필 이름
+  avatarUrl       String?  @db.VarChar(512)                  /// 소셜 프로필 이미지
+  refreshTokenEnc String?  @db.Text                          /// (선택) refresh token 암호화 저장
+  linkedAt        DateTime @default(now())                   /// 연동된 시각
+
+  user            User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([provider, providerUserId]) // 동일 소셜 계정 중복 방지
+  @@index([userId, provider])
+}
+
+/// 로그인 세션
+model Session {
+  sessionId     String   @id @db.VarChar(32)              /// 세션 ID (쿠키와 매칭)
+  userId        String   @db.Char(25)                     /// 연결된 사용자
+  uaFingerprint String?  @db.VarChar(191)                 /// 브라우저/디바이스 식별 정보
+  expiresAt     DateTime                                /// 만료 시각
+  createdAt     DateTime @default(now())                 /// 생성 시각
+  revokedAt     DateTime?                               /// 강제 만료 시각
+
+  user          User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// 작품 (책 단위)
+model Work {
+  workId     String     @id @default(cuid()) @db.Char(25) /// 작품 ID
+  userId     String     @db.Char(25)                     /// 작성자
+  title      String     @db.VarChar(191)                 /// 제목
+  coverImage String?    @db.VarChar(512)                 /// 표지 이미지
+  status     WorkStatus @default(draft)                  /// 상태(draft/completed)
+  createdAt  DateTime   @default(now())                  /// 생성일시
+  updatedAt  DateTime   @updatedAt                       /// 수정일시
+
+  user       User       @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  pages      Page[]     /// 포함된 페이지들
+  exports    Export[]   /// 내보낸 결과물
+
+  @@index([userId, status])
+  @@index([updatedAt])
+}
+
+/// 작품 내 페이지
+model Page {
+  pageId       String           @id @default(cuid()) @db.Char(25) /// 페이지 ID
+  workId       String           @db.Char(25)                     /// 소속 작품
+  orderIndex   Int                                                /// 작품 내 순서
+  contentType  PageContentType                                    /// 텍스트/이미지/혼합
+  contentJson  Json                                               /// 페이지 데이터(JSON)
+
+  work         Work             @relation(fields: [workId], references: [workId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([workId, orderIndex])
+  @@unique([workId, orderIndex]) // 작품 내 페이지 순서 유니크
+}
+
+/// 인생그래프 (전체 그래프 설정)
+model LifeGraph {
+  graphId     String   @id @default(cuid()) @db.Char(25)
+  userId      String   @db.Char(25)
+  title       String   @db.VarChar(191)                 /// 그래프 제목
+  description String?  @db.Text                         /// 그래프 설명
+  startDate   DateTime                                  /// 시작 시점
+  endDate     DateTime?                                 /// 종료 시점 (현재 진행형이면 null)
+  minScore    Int      @default(-5)                     /// 최소 점수
+  maxScore    Int      @default(5)                      /// 최대 점수
+  isPublic    Boolean  @default(false)                  /// 공개 여부
+  shareToken  String?  @unique @db.Char(32)            /// 공유 링크용 토큰
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  points      LifeGraphPoint[]     /// 그래프의 점들
+  shares      LifeGraphShare[]     /// 공유 권한들
+  comments    LifeGraphComment[]   /// 댓글들
+
+  @@index([userId])
+  @@index([shareToken])
+}
+
+/// 인생그래프의 개별 점
+model LifeGraphPoint {
+  pointId     String   @id @default(cuid()) @db.Char(25)
+  graphId     String   @db.Char(25)
+  date        DateTime                                  /// 정확한 날짜 (년-월-일)
+  score       Float                                     /// 만족도/감정 점수
+  title       String?  @db.VarChar(191)                /// 사건 제목
+  description String?  @db.Text                         /// 상세 설명
+  emotion     Emotion?                                 /// 감정 아이콘 (선택적)
+  attachments Json?                                    /// 첨부파일 정보 배열 [{type: 'image', url: '...', name: '...'}, ...]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  graph       LifeGraph             @relation(fields: [graphId], references: [graphId], onDelete: Cascade)
+  tags        LifeGraphPointTag[]   /// 점에 붙은 태그들
+  comments    LifeGraphComment[]    /// 이 점에 대한 댓글들
+
+  @@index([graphId, date])
+}
+
+/// 태그 정의
+model LifeGraphTag {
+  tagId       String   @id @default(cuid()) @db.Char(25)
+  userId      String   @db.Char(25)                     /// 태그 소유자
+  name        String   @db.VarChar(50)                  /// 태그명
+  color       String   @db.Char(7)      @default("#3B82F6") /// HEX 색상
+  description String?  @db.VarChar(191)                 /// 태그 설명
+  createdAt   DateTime @default(now())
+
+  user        User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  points      LifeGraphPointTag[]  /// 이 태그가 붙은 점들
+
+  @@unique([userId, name]) /// 유저별로 태그명 중복 방지
+  @@index([userId])
+}
+
+/// 점-태그 연결 테이블
+model LifeGraphPointTag {
+  pointId     String
+  tagId       String
+  intensity   Float?   @default(1.0)                    /// 태그 영향도 (0.1~1.0)
+  createdAt   DateTime @default(now())
+
+  point       LifeGraphPoint @relation(fields: [pointId], references: [pointId], onDelete: Cascade)
+  tag         LifeGraphTag   @relation(fields: [tagId], references: [tagId], onDelete: Cascade)
+
+  @@id([pointId, tagId])
+}
+
+/// 그래프 공유 권한
+model LifeGraphShare {
+  shareId     String          @id @default(cuid()) @db.Char(25)
+  graphId     String          @db.Char(25)
+  email       String?         @db.VarChar(191)                 /// 공유 대상 이메일 (특정인 공유시)
+  shareToken  String          @unique @db.Char(32)            /// 공유용 토큰
+  permissions SharePermission @default(read)                   /// 권한 레벨
+  expiresAt   DateTime?                                        /// 만료일 (null이면 무제한)
+  isActive    Boolean         @default(true)                   /// 활성 상태
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  graph       LifeGraph @relation(fields: [graphId], references: [graphId], onDelete: Cascade)
+
+  @@index([graphId])
+  @@index([shareToken])
+}
+
+/// 그래프 댓글/피드백
+model LifeGraphComment {
+  commentId   String   @id @default(cuid()) @db.Char(25)
+  graphId     String   @db.Char(25)
+  pointId     String?  @db.Char(25)                     /// 특정 점에 대한 댓글 (null이면 전체 그래프)
+  authorName  String   @db.VarChar(100)                 /// 댓글 작성자명
+  authorEmail String?  @db.VarChar(191)                 /// 작성자 이메일 (선택)
+  content     String   @db.Text                         /// 댓글 내용
+  isPrivate   Boolean  @default(false)                  /// 비공개 댓글 여부 (작성자만 보기)
+  parentId    String?  @db.Char(25)                     /// 답글인 경우 부모 댓글 ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  graph       LifeGraph       @relation(fields: [graphId], references: [graphId], onDelete: Cascade)
+  point       LifeGraphPoint? @relation(fields: [pointId], references: [pointId], onDelete: Cascade)
+  parent      LifeGraphComment? @relation("CommentReplies", fields: [parentId], references: [commentId], onDelete: Cascade)
+  replies     LifeGraphComment[] @relation("CommentReplies")
+
+  @@index([graphId, createdAt])
+  @@index([pointId])
+  @@index([parentId])
+}
+
+/// 내보낸 결과물 (PDF/이미지/Word 등)
+model Export {
+  exportId   String   @id @default(cuid()) @db.Char(25) /// 결과물 ID
+  workId     String   @db.Char(25)                     /// 소속 작품
+  fileType   String   @db.VarChar(16)                  /// 파일 형식 ('PDF' | 'PNG' | 'JPG' | 'WORD')
+  filePath   String   @db.VarChar(512)                 /// 저장 경로
+  createdAt  DateTime @default(now())                  /// 생성 시각
+
+  work       Work     @relation(fields: [workId], references: [workId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([workId, fileType])
+}
+
+/// 로그인 감사 로그: 성공/실패/사유/메타데이터
+model AuthLog {
+  id         String   @id @default(cuid()) @db.Char(25)
+  userId     String?  @db.Char(25)                 /// 매칭된 사용자(성공하거나, 실패라도 email 매칭 가능 시)
+  emailHash  String?  @db.VarChar(191)             /// email 원문 저장 대신 hash
+  ip         String?  @db.VarChar(64)              /// X-Forwarded-For 등
+  ua         String?  @db.VarChar(512)             /// user-agent
+  provider   String   @db.VarChar(32)              /// 'password' | 'kakao' | 'naver' | ...
+  result     String   @db.VarChar(16)              /// 'success' | 'fail'
+  reason     String?  @db.VarChar(64)              /// 'bad_password' | 'no_user' | 'rate_limit' | 'captcha' | ...
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([result, createdAt])
+  @@index([emailHash])
+}

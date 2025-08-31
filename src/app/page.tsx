@@ -1,9 +1,12 @@
-// src/app/page.tsx
-export default function Page() {
-  return (
-    <main className="p-10">
-      <h1 className="text-3xl font-bold">Next 15 + React 19 + Tailwind ✅</h1>
-      <p className="mt-2 text-gray-600">유틸 클래스가 감지되면 경고가 사라집니다.</p>
-    </main>
-  );
+import { getSessionUser } from "@/lib/session";
+// app/page.tsx
+import { redirect } from "next/navigation";
+
+// 루트 접근 시: 로그인되어 있으면 /dashboard, 아니면 /(public)/login 으로
+export default async function RootPage() {
+  const me = await getSessionUser();
+  if (me) {
+    redirect("/dashboard");
+  }
+  redirect("/login");
 }
