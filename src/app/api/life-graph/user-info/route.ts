@@ -1,42 +1,56 @@
 // app/api/life-graph/user-info/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/session';
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/session";
+
+export const dynamic = "force-dynamic";
+
+type Body = {
+  name?: string;
+  birthYear?: number;
+  location?: string;
+};
 
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await requireAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // ✅ requireAuth()가 User를 직접 반환한다고 가정
+    const me = await requireAuth();
+
+    const { name, birthYear, location } = (await request.json()) as Body;
+
+    const updates: { name?: string | null } = {};
+    if (typeof name === "string") updates.name = name;
+
+    if (Object.keys(updates).length) {
+      await prisma.user.update({
+        where: { userId: me.userId }, // ✅ PK는 userId
+        data: updates,
+      });
     }
 
-    const userId = authResult.user.id;
-    const { name, birthYear, location } = await request.json();
+    const safeBirthYear =
+      typeof birthYear === "number" && birthYear >= 1900 && birthYear <= 2100
+        ? birthYear
+        : undefined;
 
-    // 사용자 이름 업데이트
-    await prisma.user.update({
-      where: { id: userId },
-      data: { name }
-    });
-
-    // birthYear와 location은 별도 테이블에 저장하거나 
-    // 세션 스토리지에만 저장할 수 있음 (현재는 응답에서만 사용)
+    const safeLocation =
+      typeof location === "string" && location.trim().length > 0
+        ? location.trim()
+        : undefined;
 
     return NextResponse.json({
-      message: 'User info updated successfully',
-      userInfo: { name, birthYear, location }
+      message: "User info updated successfully",
+      userInfo: {
+        name: updates.name ?? me.name ?? "",
+        birthYear: safeBirthYear,
+        location: safeLocation,
+      },
     });
-
   } catch (error) {
-    console.error('Update User Info Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update user info' },
-      { status: 500 }
-    );
+    console.error("Update User Info Error:", error);
+    // requireAuth가 미인증 시 throw 한다고 가정
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 }

@@ -98,17 +98,24 @@ model Session {
 
 /// 작품 (책 단위)
 model Work {
-  workId     String     @id @default(cuid()) @db.Char(25) /// 작품 ID
-  userId     String     @db.Char(25)                     /// 작성자
-  title      String     @db.VarChar(191)                 /// 제목
-  coverImage String?    @db.VarChar(512)                 /// 표지 이미지
-  status     WorkStatus @default(draft)                  /// 상태(draft/completed)
-  createdAt  DateTime   @default(now())                  /// 생성일시
-  updatedAt  DateTime   @updatedAt                       /// 수정일시
+  workId     String     @id @default(cuid()) @db.Char(25)
+  userId     String     @db.Char(25)
+  title      String     @db.VarChar(191)
+
+  // ✅ Data URL(수천~수만자) 저장 대비: VarChar(512) → Text 로 확장
+  coverImage String?    @db.Text
+
+  status     WorkStatus @default(draft)
+
+  // ✅ 명확한 길이 부여 (LifeGraph와 일관). 32자 고정 헥사 토큰 권장
+  shareToken String?    @unique @db.Char(32)
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   user       User       @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
-  pages      Page[]     /// 포함된 페이지들
-  exports    Export[]   /// 내보낸 결과물
+  pages      Page[]
+  exports    Export[]
 
   @@index([userId, status])
   @@index([updatedAt])

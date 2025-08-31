@@ -1,51 +1,60 @@
 // app/api/life-graph/events/[id]/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-import { getSessionUser } from '@/lib/session';
-import { prisma } from '@/lib/prisma';
+import { getSessionUser } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+
+const isValidId = (id: string) => /^[a-z0-9]{25}$/i.test(id);
+
+type Params = { id: string };
+
+export const dynamic = "force-dynamic";
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  ctx: { params: Promise<Params> }   // ✅ Promise 형태로 변경
 ) {
   try {
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
+        { success: false, error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    const userId = user.userId;
-    const eventId = params.id;
+    const { id: eventId } = await ctx.params;          // ✅ await으로 해제
+    if (!eventId || !isValidId(eventId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid event id" },
+        { status: 400 }
+      );
+    }
 
-    // 포인트 소유권 확인 및 삭제
-    const deletedPoint = await prisma.lifeGraphPoint.deleteMany({
+    const result = await prisma.lifeGraphPoint.deleteMany({
       where: {
         pointId: eventId,
-        graph: {
-          userId // 본인 소유 포인트만 삭제 가능
-        }
-      }
+        graph: { userId: user.userId },
+      },
     });
 
-    if (deletedPoint.count === 0) {
+    if (result.count === 0) {
       return NextResponse.json(
-        { error: 'Event not found or unauthorized' },
+        { success: false, error: "Event not found or unauthorized" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
-      message: 'Event deleted successfully'
+      success: true,
+      deleted: result.count,
+      message: "Event deleted successfully",
     });
-
   } catch (error) {
-    console.error('Delete Life Graph Event Error:', error);
+    console.error("Delete Life Graph Event Error:", error);
     return NextResponse.json(
-      { error: 'Failed to delete life graph event' },
+      { success: false, error: "Failed to delete life graph event" },
       { status: 500 }
     );
   }
