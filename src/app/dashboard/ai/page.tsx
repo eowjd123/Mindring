@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Send,
   User,
-  X
+  X,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -19,20 +19,13 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
+  timestamp: string; // ISO string to avoid SSR/CSR mismatch
   audioFile?: string;
 }
 
 export default function AIChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: '안녕하세요! 디지털자서전 도우미입니다. 😊\n\n다음과 같은 도움을 드릴 수 있어요:\n\n• 글쓰기 도우미\n• 문장을 매끄럽게 다듬어 주고 문법, 오탈자 고쳐 줌\n• 음성 파일 업로드하면 텍스트로 전사해 줌\n\n어떤 도움이 필요하신가요?',
-      timestamp: new Date()
-    }
-  ]);
-
+  // ✅ Hydration-safe: start with empty list and inject initial message on mount (client-only)
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -43,9 +36,28 @@ export default function AIChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
+  const makeId = () =>
+    (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+
+  const nowISO = () => new Date().toISOString();
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Inject initial assistant message on mount (client-only)
+  useEffect(() => {
+    setMessages([
+      {
+        id: makeId(),
+        role: 'assistant',
+        content:
+          '안녕하세요! 디지털자서전 도우미입니다. 😊\n\n다음과 같은 도움을 드릴 수 있어요:\n\n• 글쓰기 도우미\n• 문장을 매끄럽게 다듬어 주고 문법, 오탈자 고쳐 줌\n• 음성 파일 업로드하면 텍스트로 전사해 줌\n\n어떤 도움이 필요하신가요?',
+        timestamp: nowISO(),
+      },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -55,14 +67,14 @@ export default function AIChatPage() {
     if (!inputText.trim() && !selectedFile) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: makeId(),
       role: 'user',
       content: inputText || `[음성 파일: ${selectedFile?.name}]`,
-      timestamp: new Date(),
-      audioFile: selectedFile?.name
+      timestamp: nowISO(), // client-only timestamp
+      audioFile: selectedFile?.name,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setSelectedFile(null);
     setError(null);
@@ -70,7 +82,7 @@ export default function AIChatPage() {
 
     try {
       const formData = new FormData();
-      formData.append('message', inputText);
+      formData.append('message', userMessage.content);
       if (selectedFile) {
         formData.append('audioFile', selectedFile);
       }
@@ -84,34 +96,37 @@ export default function AIChatPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: { response: string; transcription?: string | null } =
+        await response.json();
 
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: makeId(),
         role: 'assistant',
         content: data.response,
-        timestamp: new Date()
+        timestamp: nowISO(), // render-safe
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error('Error sending message:', err);
       setError('메시지 전송 중 오류가 발생했습니다. 다시 시도해주세요.');
-      
+
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: makeId(),
         role: 'assistant',
-        content: '죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
-        timestamp: new Date()
+        content:
+          '죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        timestamp: nowISO(),
       };
-      
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // IME 호환 위해 onKeyDown 사용
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -121,7 +136,6 @@ export default function AIChatPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check if it's an audio file
       if (file.type.startsWith('audio/')) {
         setSelectedFile(file);
         setError(null);
@@ -147,16 +161,18 @@ export default function AIChatPage() {
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
-        const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
+        const file = new File([blob], `recording-${Date.now()}.webm`, {
+          type: 'audio/webm',
+        });
         setSelectedFile(file);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (error) {
-      console.error('Error starting recording:', error);
+    } catch (err) {
+      console.error('Error starting recording:', err);
       setError('음성 녹음을 시작할 수 없습니다.');
     }
   };
@@ -169,13 +185,15 @@ export default function AIChatPage() {
   };
 
   const clearConversation = () => {
+    // 클라에서만 초기 메시지 넣도록 동일 패턴 유지
     setMessages([
       {
-        id: '1',
+        id: makeId(),
         role: 'assistant',
-        content: '안녕하세요! 디지털자서전 도우미입니다. 😊\n\n다음과 같은 도움을 드릴 수 있어요:\n\n• 글쓰기 도우미\n• 문장을 매끄럽게 다듬어 주고 문법, 오탈자 고쳐 줌\n• 음성 파일 업로드하면 텍스트로 전사해 줌\n\n어떤 도움이 필요하신가요?',
-        timestamp: new Date()
-      }
+        content:
+          '안녕하세요! 디지털자서전 도우미입니다. 😊\n\n다음과 같은 도움을 드릴 수 있어요:\n\n• 글쓰기 도우미\n• 문장을 매끄럽게 다듬어 주고 문법, 오탈자 고쳐 줌\n• 음성 파일 업로드하면 텍스트로 전사해 줌\n\n어떤 도움이 필요하신가요?',
+        timestamp: nowISO(),
+      },
     ]);
   };
 
@@ -190,7 +208,9 @@ export default function AIChatPage() {
               <Bot className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">디지털자서전 도우미</h1>
+              <h1 className="text-xl font-semibold text-gray-900">
+                디지털자서전 도우미
+              </h1>
               <p className="text-sm text-gray-500">ChatGPT 기반 글쓰기 도우미</p>
             </div>
           </div>
@@ -210,26 +230,30 @@ export default function AIChatPage() {
               <div
                 key={message.id}
                 className={`flex items-start space-x-3 ${
-                  message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                  message.role === 'user'
+                    ? 'flex-row-reverse space-x-reverse'
+                    : ''
                 }`}
               >
-                <div className={`flex-shrink-0 rounded-full p-2 ${
-                  message.role === 'user' 
-                    ? 'bg-blue-500' 
-                    : 'bg-green-500'
-                }`}>
+                <div
+                  className={`flex-shrink-0 rounded-full p-2 ${
+                    message.role === 'user' ? 'bg-blue-500' : 'bg-green-500'
+                  }`}
+                >
                   {message.role === 'user' ? (
                     <User className="h-5 w-5 text-white" />
                   ) : (
                     <Bot className="h-5 w-5 text-white" />
                   )}
                 </div>
-                
-                <div className={`max-w-2xl rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white border shadow-sm'
-                }`}>
+
+                <div
+                  className={`max-w-2xl rounded-2xl px-4 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white border shadow-sm'
+                  }`}
+                >
                   {message.audioFile && (
                     <div className="mb-2 flex items-center text-sm opacity-75">
                       <FileAudio className="mr-1 h-4 w-4" />
@@ -237,15 +261,25 @@ export default function AIChatPage() {
                     </div>
                   )}
                   <div className="whitespace-pre-wrap">{message.content}</div>
-                  <div className={`mt-2 text-xs opacity-75 ${
-                    message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
-                    {message.timestamp.toLocaleTimeString()}
+                  <div
+                    className={`mt-2 text-xs opacity-75 ${
+                      message.role === 'user'
+                        ? 'text-blue-100'
+                        : 'text-gray-500'
+                    }`}
+                  >
+                    {/* ✅ Hydration-safe: suppress warning + fixed locale/format (no seconds) */}
+                    <time suppressHydrationWarning>
+                      {new Date(message.timestamp).toLocaleTimeString('ko-KR', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </time>
                   </div>
                 </div>
               </div>
             ))}
-            
+
             {isLoading && (
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 rounded-full bg-green-500 p-2">
@@ -256,7 +290,9 @@ export default function AIChatPage() {
                     <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400"></div>
                     <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400 delay-100"></div>
                     <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400 delay-200"></div>
-                    <span className="text-sm text-gray-500">답변을 생성하고 있습니다...</span>
+                    <span className="text-sm text-gray-500">
+                      답변을 생성하고 있습니다...
+                    </span>
                   </div>
                 </div>
               </div>
@@ -282,8 +318,10 @@ export default function AIChatPage() {
           <div className="mx-6 mb-4 rounded-lg bg-blue-50 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <FileAudio className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-sm text-blue-700">{selectedFile.name}</span>
+                <FileAudio className="mr-2 h-5 w-5 text-blue-500" />
+                <span className="text-sm text-blue-700">
+                  {selectedFile.name}
+                </span>
               </div>
               <button
                 onClick={removeSelectedFile}
@@ -303,7 +341,7 @@ export default function AIChatPage() {
                 <textarea
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
                   className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   rows={3}
@@ -313,7 +351,7 @@ export default function AIChatPage() {
                   {inputText.length}/2000
                 </div>
               </div>
-              
+
               {/* File Upload */}
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -329,16 +367,16 @@ export default function AIChatPage() {
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              
+
               {/* Voice Recording */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 className={`rounded-full p-3 ${
-                  isRecording 
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                  isRecording
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
                     : 'bg-gray-100 hover:bg-gray-200'
                 }`}
-                title={isRecording ? "녹음 중지" : "음성 녹음"}
+                title={isRecording ? '녹음 중지' : '음성 녹음'}
               >
                 {isRecording ? (
                   <MicOff className="h-5 w-5 text-white" />
@@ -346,12 +384,12 @@ export default function AIChatPage() {
                   <Mic className="h-5 w-5 text-gray-600" />
                 )}
               </button>
-              
+
               {/* Send Button */}
               <button
                 onClick={handleSendMessage}
                 disabled={(!inputText.trim() && !selectedFile) || isLoading}
-                className="rounded-full bg-blue-500 p-3 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="rounded-full bg-blue-500 p-3 hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
               >
                 <Send className="h-5 w-5 text-white" />
               </button>
