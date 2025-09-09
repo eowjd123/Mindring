@@ -587,13 +587,13 @@ function BookCard({ book, onSelect, onDownload, onShare }: BookCardProps) {
                     <MessageCircle className="mr-2 h-4 w-4" />
                     카카오톡
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => onShare(book, "email")}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded flex items-center"
                   >
                     <Mail className="mr-2 h-4 w-4" />
                     이메일
-                  </button>
+                  </button> */}
                   <button
                     onClick={() => onShare(book, "link")}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded flex items-center"
