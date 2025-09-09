@@ -102,14 +102,11 @@ model Work {
   userId     String     @db.Char(25)
   title      String     @db.VarChar(191)
 
-  // ✅ Data URL(수천~수만자) 저장 대비: VarChar(512) → Text 로 확장
-  coverImage String?    @db.Text
+  // 변경: Text -> LongText (MySQL)
+  coverImage String?    @db.LongText
 
   status     WorkStatus @default(draft)
-
-  // ✅ 명확한 길이 부여 (LifeGraph와 일관). 32자 고정 헥사 토큰 권장
   shareToken String?    @unique @db.Char(32)
-
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 

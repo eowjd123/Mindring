@@ -1,1061 +1,1320 @@
-// app/dashboard/create-work/page.tsx
+// src/app/dashboard/create-work/page.tsx
 'use client';
 
 import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  ChevronDown,
-  ChevronUp,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  ArrowLeft,
+  Copy,
+  Crop,
+  Download,
+  Edit,
   Eye,
   FlipHorizontal,
   FlipVertical,
-  GripVertical,
   Image as ImageIcon,
-  Italic,
+  Pause,
+  Play,
   Plus,
   RotateCcw,
   RotateCw,
   Save,
+  Share2,
+  SkipBack,
+  SkipForward,
   Trash2,
   Type,
-  Upload,
-  X
+  X,
 } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-/* =========================
-   Types
-   ========================= */
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+
+/* =====================
+ * Types
+ * ===================== */
+interface PageContent {
+  type: 'text' | 'image' | 'mixed';
+  text?: string;
+  imageUrl?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  color?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  imagePosition?: 'top' | 'bottom' | 'left' | 'right';
+  imageSize?: 'small' | 'medium' | 'large' | 'full';
+}
 
 interface Page {
   id: string;
-  type: 'text' | 'image' | 'mixed';
-  content: {
-    text?: string;
-    image?: string;
-    imageStyle?: {
-      width: number;
-      height: number;
-      rotation: number;
-      flipH: boolean;
-      flipV: boolean;
-    };
-    textStyle?: {
-      fontSize: number;
-      fontFamily: string;
-      color: string;
-      align: 'left' | 'center' | 'right';
-      bold: boolean;
-      italic: boolean;
-    };
-  };
+  orderIndex: number;
+  contentType: 'text' | 'image' | 'mixed';
+  contentJson: PageContent;
 }
+
+type ClientStatus = 'draft' | 'completed';
 
 interface Work {
   id: string;
   title: string;
   coverImage?: string;
+  status: ClientStatus;
   pages: Page[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// 서버 응답 타입(대문자 페이지 타입을 받을 수 있음)
-type ApiPageType = 'TEXT' | 'IMAGE' | 'MIXED';
-type ClientPageType = 'text' | 'image' | 'mixed';
-
-interface ApiPage {
-  id: string;
-  type: string; // 서버가 문자열로 보낼 수 있으므로 string
-  content?: Page['content'] | null;
-}
-
-interface ApiWork {
-  id: string;
-  title: string;
-  coverImage?: string | null;
-  pages?: ApiPage[];
   createdAt: string;
   updatedAt: string;
 }
 
-/* =========================
-   Utils
-   ========================= */
+interface ServerWorkResponse {
+  id: string;
+  title: string;
+  coverImage?: string;
+  status?: string;
+  pages?: Array<{
+    id?: string;
+    orderIndex?: number;
+    order?: number;
+    contentType?: string;
+    type?: string;
+    contentJson?: PageContent;
+    content?: PageContent;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
 
-// Prisma cuid() 25자 영숫자
-const isDbId = (id: string) => /^[a-z0-9]{25}$/i.test(id);
+/* =====================
+ * API Helpers
+ * ===================== */
+const workAPI = {
+  async getById(id: string): Promise<ServerWorkResponse> {
+    const res = await fetch(`/api/works/${id}`, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string })?.error || 'Failed to load work');
+    }
+    return res.json();
+  },
+  async create(data: {
+    title: string;
+    coverImage?: string;
+    pages: Array<{ type: string; content: PageContent }>;
+    status?: string;
+  }): Promise<Work> {
+    const res = await fetch('/api/works', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string })?.error || 'Failed to create work');
+    }
+    return res.json();
+  },
+  async update(data: {
+    id: string;
+    title: string;
+    coverImage?: string;
+    pages: Array<{ type: string; content: PageContent }>;
+    status?: string;
+  }): Promise<Work> {
+    const res = await fetch('/api/works', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string })?.error || 'Failed to update work');
+    }
+    return res.json();
+  },
+};
 
-const isApiPageType = (v: string): v is ApiPageType =>
-  (['TEXT', 'IMAGE', 'MIXED'] as const).includes(v as ApiPageType);
+/* =====================
+ * Utility Functions
+ * ===================== */
+function serverStatusToClient(status?: string): ClientStatus {
+  if (!status) return 'draft';
+  const normalized = status.toLowerCase();
+  return normalized === 'completed' ? 'completed' : 'draft';
+}
 
-const toClientPageType = (t: string): ClientPageType =>
-  isApiPageType(t) ? (t.toLowerCase() as ClientPageType) : 'text';
+function clientStatusToServer(status: ClientStatus): string {
+  return status === 'completed' ? 'completed' : 'draft';
+}
 
-/* =========================
-   Page
-   ========================= */
+function serverPageTypeToClient(type?: string): Page['contentType'] {
+  const normalized = (type || '').toLowerCase();
+  if (normalized === 'image') return 'image';
+  if (normalized === 'mixed') return 'mixed';
+  return 'text';
+}
 
+/* =====================
+ * Image Editor Component
+ * ===================== */
+interface ImageEditorProps {
+  src: string;
+  alt: string;
+  onSave: (editedImageUrl: string) => void;
+  onCancel: () => void;
+}
+
+const ImageEditor: React.FC<ImageEditorProps> = ({ src, alt, onSave, onCancel }) => {
+  const [rotation, setRotation] = useState(0);
+  const [flipH, setFlipH] = useState(false);
+  const [flipV, setFlipV] = useState(false);
+  const [isCropping, setIsCropping] = useState(false);
+
+  const transform = useMemo(
+    () =>
+      [
+        rotation ? `rotate(${rotation}deg)` : '',
+        flipH ? 'scaleX(-1)' : '',
+        flipV ? 'scaleY(-1)' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    [rotation, flipH, flipV]
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">이미지 편집</h3>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <Button variant="outline" size="sm" onClick={() => setRotation((v) => (v + 90) % 360)}>
+            <RotateCw className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setRotation((v) => (v - 90 + 360) % 360)}>
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setFlipH((v) => !v)}>
+            <FlipHorizontal className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setFlipV((v) => !v)}>
+            <FlipVertical className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={isCropping ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setIsCropping((v) => !v)}
+          >
+            <Crop className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="relative mb-4 flex justify-center">
+          <img src={src} alt={alt} className="max-w-full max-h-96 object-contain" style={{ transform }} />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            취소
+          </Button>
+          <Button onClick={() => onSave(src)}>저장</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* =====================
+ * Save Dialog Component
+ * ===================== */
+interface SaveDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (title: string, coverImage: string, status: ClientStatus) => void;
+  currentTitle: string;
+  currentCoverImage: string;
+  isLoading?: boolean;
+  initialStatus?: ClientStatus;
+}
+
+const SaveDialog: React.FC<SaveDialogProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  currentTitle,
+  currentCoverImage,
+  isLoading = false,
+  initialStatus = 'draft',
+}) => {
+  const [title, setTitle] = useState(currentTitle);
+  const [coverImage, setCoverImage] = useState(currentCoverImage);
+  const [status, setStatus] = useState<ClientStatus>(initialStatus);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTitle(currentTitle);
+      setCoverImage(currentCoverImage);
+      setStatus(initialStatus);
+    }
+  }, [isOpen, currentTitle, currentCoverImage, initialStatus]);
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result;
+      if (typeof result === 'string') setCoverImage(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      toast.error('제목을 입력해주세요');
+      return;
+    }
+    onSave(title, coverImage, status);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>저장</DialogTitle>
+          <DialogDescription>작품 정보를 입력하고 저장하세요.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">제목 *</label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="작품 제목을 입력하세요"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">표지 이미지</label>
+            <div className="space-y-2">
+              {coverImage && (
+                <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
+                  <img src={coverImage} alt="표지" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => fileRef.current?.click()}
+                disabled={isLoading}
+              >
+                표지 선택하기
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImagePick}
+                className="hidden"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">상태</label>
+            <RadioGroup
+              value={status}
+              onValueChange={(v) => setStatus(v as ClientStatus)}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem id="status-draft" value="draft" disabled={isLoading} />
+                <label htmlFor="status-draft" className="text-sm">임시저장</label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem id="status-completed" value="completed" disabled={isLoading} />
+                <label htmlFor="status-completed" className="text-sm">완성</label>
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            취소
+          </Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? '저장 중...' : '저장'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/* =====================
+ * Preview Dialog Component
+ * ===================== */
+interface PreviewDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  pages: Page[];
+  title: string;
+}
+
+const PreviewDialog: React.FC<PreviewDialogProps> = ({ isOpen, onClose, pages, title }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [intervalSeconds, setIntervalSeconds] = useState(4);
+  const timerRef = useRef<number | null>(null);
+
+  const nextPage = () => setCurrentIndex((prev) => (prev + 1) % Math.max(pages.length, 1));
+  const prevPage = () => setCurrentIndex((prev) => (prev - 1 + Math.max(pages.length, 1)) % Math.max(pages.length, 1));
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+      timerRef.current = null;
+      setIsPlaying(false);
+    } else {
+      timerRef.current = window.setInterval(nextPage, intervalSeconds * 1000);
+      setIsPlaying(true);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
+  const currentPage = pages[currentIndex];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-lg p-4">
+          {currentPage ? (
+            <div className="w-full max-w-2xl bg-white rounded-lg shadow-sm p-6">
+              {currentPage.contentJson.imageUrl && (
+                <div className="mb-4">
+                  <img src={currentPage.contentJson.imageUrl} alt="" className="w-full h-auto rounded" />
+                </div>
+              )}
+              {currentPage.contentJson.text && (
+                <div
+                  className="prose"
+                  style={{
+                    fontSize: `${currentPage.contentJson.fontSize || 16}px`,
+                    fontFamily: currentPage.contentJson.fontFamily || 'inherit',
+                    fontWeight: currentPage.contentJson.fontWeight || 'normal',
+                    color: currentPage.contentJson.color || 'inherit',
+                    textAlign: currentPage.contentJson.textAlign || 'left',
+                  }}
+                >
+                  {currentPage.contentJson.text}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">페이지가 없습니다</div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" onClick={prevPage}>
+            <SkipBack className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={togglePlay}>
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          </Button>
+          <Button variant="outline" size="sm" onClick={nextPage}>
+            <SkipForward className="w-4 h-4" />
+          </Button>
+          <Select 
+            value={String(intervalSeconds)} 
+            onValueChange={(v) => setIntervalSeconds(Number(v))}
+          >
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2">2초</SelectItem>
+              <SelectItem value="4">4초</SelectItem>
+              <SelectItem value="6">6초</SelectItem>
+              <SelectItem value="8">8초</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-gray-500">
+            {Math.min(currentIndex + 1, pages.length)} / {pages.length}
+          </span>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/* =====================
+ * Main Component
+ * ===================== */
 export default function CreateWorkPage() {
-  const [work, setWork] = useState<Work>({
-    id: `temp-${Date.now()}`, // temp prefix → 최초 저장은 POST
-    title: '새로운 작품',
-    pages: [],
-    createdAt: new Date(),
-    updatedAt: new Date()
-  });
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const workIdFromQuery = searchParams.get('id');
 
+  // State
+  const [pages, setPages] = useState<Page[]>([]);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
-  const [showCoverSelector, setShowCoverSelector] = useState(false);
+  const [title, setTitle] = useState('');
+  const [coverImage, setCoverImage] = useState('');
+  const [currentWorkId, setCurrentWorkId] = useState<string | null>(null);
+  const [initialStatus, setInitialStatus] = useState<ClientStatus>('draft');
+
+  // Modal states
+  const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+  const [editingImageSrc, setEditingImageSrc] = useState('');
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pageToDelete, setPageToDelete] = useState<string | null>(null);
+
+  // Loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isBootLoading, setIsBootLoading] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedPage = work.pages.find(p => p.id === selectedPageId);
+  // Initialize work data
+  useEffect(() => {
+    let cancelled = false;
+    
+    async function initializeWork() {
+      setIsBootLoading(true);
+      try {
+        if (workIdFromQuery) {
+          const serverWork = await workAPI.getById(workIdFromQuery);
 
-  /* ---------- Page CRUD ---------- */
+          if (cancelled) return;
 
-  const addPage = (type: 'text' | 'image' | 'mixed') => {
-    const newPage: Page = {
-      id: Date.now().toString(),
-      type,
-      content: {
-        text: type !== 'image' ? '텍스트를 입력하세요...' : undefined,
-        textStyle: {
-          fontSize: 16,
-          fontFamily: 'Noto Sans KR',
-          color: '#000000',
-          align: 'left',
-          bold: false,
-          italic: false
-        },
-        imageStyle: {
-          width: 300,
-          height: 200,
-          rotation: 0,
-          flipH: false,
-          flipV: false
+          setCurrentWorkId(serverWork.id);
+          setTitle(serverWork.title || '');
+          setCoverImage(serverWork.coverImage || '');
+          setInitialStatus(serverStatusToClient(serverWork.status));
+
+          const adaptedPages: Page[] = (serverWork.pages || []).map((p, i) => {
+            const contentType = serverPageTypeToClient(p.contentType || p.type);
+            const contentJson: PageContent = {
+              type: contentType,
+              text: contentType === 'image' ? undefined : '',
+              imageSize: 'medium',
+              imagePosition: 'top',
+              ...(p.contentJson || p.content || {}),
+            };
+            
+            return {
+              id: p.id || `page_${Date.now()}_${i}`,
+              orderIndex: p.orderIndex ?? p.order ?? i,
+              contentType,
+              contentJson,
+            };
+          });
+          
+          adaptedPages.sort((a, b) => a.orderIndex - b.orderIndex);
+          setPages(adaptedPages);
+          setSelectedPageId(adaptedPages[0]?.id ?? null);
+        } else {
+          // New document
+          setPages([]);
+          setSelectedPageId(null);
+          setTitle('');
+          setCoverImage('');
+          setCurrentWorkId(null);
+          setInitialStatus('draft');
         }
+      } catch (error) {
+        console.error('Failed to load work:', error);
+        toast.error('작품을 불러오지 못했습니다.');
+      } finally {
+        if (!cancelled) setIsBootLoading(false);
       }
+    }
+
+    initializeWork();
+    return () => {
+      cancelled = true;
     };
+  }, [workIdFromQuery]);
 
-    setWork(prev => ({
-      ...prev,
-      pages: [...prev.pages, newPage],
-      updatedAt: new Date()
-    }));
-
+  // Page management functions
+  const addPage = useCallback((type: 'text' | 'image' | 'mixed' = 'mixed') => {
+    const newPage: Page = {
+      id: `page_${Date.now()}`,
+      orderIndex: pages.length,
+      contentType: type,
+      contentJson: {
+        type,
+        text: type === 'image' ? undefined : '텍스트를 입력하세요',
+        fontSize: 16,
+        fontFamily: '나눔스퀘어',
+        fontWeight: 'normal',
+        color: '#000000',
+        textAlign: 'left',
+        imageSize: 'medium',
+        imagePosition: 'top',
+      },
+    };
+    setPages((prev) => [...prev, newPage]);
     setSelectedPageId(newPage.id);
-  };
+  }, [pages.length]);
 
-  const deletePage = (pageId: string) => {
-    if (!confirm('이 페이지를 삭제하시겠습니까?')) return;
+  const deletePage = useCallback((pageId: string) => {
+    setPages((prev) =>
+      prev
+        .filter((p) => p.id !== pageId)
+        .map((p, i) => ({ ...p, orderIndex: i }))
+    );
+    if (selectedPageId === pageId) setSelectedPageId(null);
+    setPageToDelete(null);
+    setShowDeleteConfirm(false);
+  }, [selectedPageId]);
 
-    setWork(prev => ({
-      ...prev,
-      pages: prev.pages.filter(p => p.id !== pageId),
-      updatedAt: new Date()
-    }));
-
-    if (selectedPageId === pageId) {
-      setSelectedPageId(null);
-    }
-  };
-
-  const updatePageContent = (pageId: string, updates: Partial<Page['content']>) => {
-    setWork(prev => ({
-      ...prev,
-      pages: prev.pages.map(p =>
-        p.id === pageId
-          ? { ...p, content: { ...p.content, ...updates } }
-          : p
-      ),
-      updatedAt: new Date()
-    }));
-  };
-
-  /* ---------- Reorder ---------- */
-
-  const movePageUp = (pageId: string) => {
-    const pageIndex = work.pages.findIndex(p => p.id === pageId);
-    if (pageIndex > 0) {
-      const newPages = [...work.pages];
-      [newPages[pageIndex], newPages[pageIndex - 1]] =
-        [newPages[pageIndex - 1], newPages[pageIndex]];
-      setWork(prev => ({ ...prev, pages: newPages, updatedAt: new Date() }));
-    }
-  };
-
-  const movePageDown = (pageId: string) => {
-    const pageIndex = work.pages.findIndex(p => p.id === pageId);
-    if (pageIndex < work.pages.length - 1) {
-      const newPages = [...work.pages];
-      [newPages[pageIndex], newPages[pageIndex + 1]] =
-        [newPages[pageIndex + 1], newPages[pageIndex]];
-      setWork(prev => ({ ...prev, pages: newPages, updatedAt: new Date() }));
-    }
-  };
-
-  const movePage = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    const newPages = [...work.pages];
-    const [movedPage] = newPages.splice(fromIndex, 1);
-    newPages.splice(toIndex, 0, movedPage);
-    setWork(prev => ({ ...prev, pages: newPages, updatedAt: new Date() }));
-  };
-
-  const handleDragStart = (e: React.DragEvent, pageId: string) => {
-    setDraggedPageId(pageId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, targetPageId: string) => {
-    e.preventDefault();
-    if (!draggedPageId || draggedPageId === targetPageId) {
-      setDraggedPageId(null);
-      return;
-    }
-    const fromIndex = work.pages.findIndex(p => p.id === draggedPageId);
-    const toIndex = work.pages.findIndex(p => p.id === targetPageId);
-    movePage(fromIndex, toIndex);
-    setDraggedPageId(null);
-  };
-
-  /* ---------- Cover helpers ---------- */
-
-  const setCoverImage = (imageUrl: string) => {
-    setWork(prev => ({ ...prev, coverImage: imageUrl, updatedAt: new Date() }));
-    setShowCoverSelector(false);
-  };
-
-  const setCoverFromPage = (page: Page) => {
-    if (page.content.image) {
-      setCoverImage(page.content.image);
-    }
-  };
-
-  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('이미지 파일만 업로드 가능합니다.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event: ProgressEvent<FileReader>) => {
-      const result = event.target?.result;
-      if (typeof result === 'string') {
-        setCoverImage(result);
-      }
+  const duplicatePage = useCallback((pageId: string) => {
+    const original = pages.find((p) => p.id === pageId);
+    if (!original) return;
+    
+    const cloned: Page = {
+      ...original,
+      id: `page_${Date.now()}`,
+      orderIndex: pages.length,
     };
-    reader.readAsDataURL(file);
-  };
+    setPages((prev) => [...prev, cloned]);
+  }, [pages]);
 
-  const removeCoverImage = () => {
-    setWork(prev => ({ ...prev, coverImage: undefined, updatedAt: new Date() }));
-    setShowCoverSelector(false);
-  };
+  const movePage = useCallback((pageId: string, direction: 'up' | 'down') => {
+    const currentIndex = pages.findIndex((p) => p.id === pageId);
+    if (currentIndex < 0) return;
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= pages.length) return;
+    
+    const newPages = [...pages];
+    [newPages[currentIndex], newPages[targetIndex]] = [newPages[targetIndex], newPages[currentIndex]];
+    newPages.forEach((p, i) => (p.orderIndex = i));
+    setPages(newPages);
+  }, [pages]);
 
-  /* ---------- Image upload ---------- */
+  const updatePageContent = useCallback((pageId: string, updates: Partial<PageContent>) => {
+    setPages((prev) =>
+      prev.map((p) =>
+        p.id === pageId ? { ...p, contentJson: { ...p.contentJson, ...updates } } : p
+      )
+    );
+  }, []);
 
+  // Image handling
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('이미지 파일만 업로드 가능합니다.');
-      return;
-    }
-
+    if (!file || !selectedPageId) return;
+    
     const reader = new FileReader();
-    reader.onload = (event: ProgressEvent<FileReader>) => {
-      const result = event.target?.result;
-      if (typeof result !== 'string') return;
-      const imageUrl = result;
-
-      if (selectedPageId) {
-        updatePageContent(selectedPageId, { image: imageUrl });
-      } else {
-        const newPage: Page = {
-          id: Date.now().toString(),
-          type: 'image',
-          content: {
-            image: imageUrl,
-            imageStyle: {
-              width: 300,
-              height: 200,
-              rotation: 0,
-              flipH: false,
-              flipV: false
-            }
-          }
-        };
-        setWork(prev => ({
-          ...prev,
-          pages: [...prev.pages, newPage],
-          updatedAt: new Date()
-        }));
-        setSelectedPageId(newPage.id);
+    reader.onload = (ev) => {
+      const result = ev.target?.result;
+      if (typeof result === 'string') {
+        updatePageContent(selectedPageId, { imageUrl: result });
       }
     };
-
     reader.readAsDataURL(file);
   };
 
-  /* ---------- Save / Preview ---------- */
+  const startImageEdit = (src: string) => {
+    setEditingImageSrc(src);
+    setIsImageEditorOpen(true);
+  };
 
-  // POST/PUT 자동 분기 + 응답 정규화 (any 없이)
-  const saveWork = async (): Promise<string | null> => {
-    if (isSaving) return null;
-    setIsSaving(true);
+  const handleImageEditSave = (url: string) => {
+    if (selectedPageId) {
+      updatePageContent(selectedPageId, { imageUrl: url });
+    }
+    setIsImageEditorOpen(false);
+    setEditingImageSrc('');
+  };
 
+  // Save functionality
+  // Save functionality
+const handleSave = async (workTitle: string, workCoverImage: string, status: ClientStatus) => {
+  setIsLoading(true);
+  try {
+    const payload = {
+      title: workTitle,
+      coverImage: workCoverImage || undefined,
+      pages: pages.map((p) => ({
+        type: p.contentType,
+        content: p.contentJson,
+      })),
+      status: clientStatusToServer(status),
+    };
+
+    let savedWork: Work;
+    if (currentWorkId) {
+      savedWork = await workAPI.update({ id: currentWorkId, ...payload });
+      toast.success('작품이 업데이트되었습니다');
+    } else {
+      savedWork = await workAPI.create(payload);
+      setCurrentWorkId(savedWork.id);
+      toast.success('작품이 저장되었습니다');
+    }
+
+    setTitle(savedWork.title);
+    setCoverImage(savedWork.coverImage || '');
+    setIsSaveDialogOpen(false);
+
+    // ✅ 상태에 따라 이동 경로 분기
+    if (status === 'completed') {
+      router.push('/dashboard/books');         // 완성 ⇒ 만든 북 보기
+    } else {
+      router.push('/dashboard/workspace');     // 임시저장 ⇒ 워크스페이스
+      // 필요하다면 특정 작업으로 이동하고 싶을 때:
+      // router.push(`/dashboard/workspace?id=${savedWork.id}`);
+    }
+  } catch (error) {
+    console.error('Save error:', error);
+    toast.error(error instanceof Error ? error.message : '저장에 실패했습니다');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (pages.length === 0 || !title.trim()) return;
+    
     try {
-      const needsCreate = !isDbId(work.id);
-
       const payload = {
-        ...(needsCreate ? {} : { id: work.id }),
-        title: work.title,
-        coverImage: work.coverImage,
-        pages: work.pages.map((p) => ({
-          type: p.type,
-          content: p.content,
+        title: title || '제목 없는 작품',
+        coverImage: coverImage || undefined,
+        pages: pages.map((p) => ({ 
+          type: p.contentType, 
+          content: p.contentJson 
         })),
+        status: 'draft',
       };
-
-      const response = await fetch('/api/works', {
-        method: needsCreate ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        throw new Error(`Save failed (${response.status}) ${errText}`);
+      
+      if (currentWorkId) {
+        await workAPI.update({ id: currentWorkId, ...payload });
+      } else {
+        const saved = await workAPI.create(payload);
+        setCurrentWorkId(saved.id);
       }
-
-      const savedWork: ApiWork = await response.json();
-
-      const normalized: Work = {
-        id: savedWork.id,
-        title: savedWork.title ?? '작품',
-        coverImage: savedWork.coverImage ?? undefined,
-        pages: (savedWork.pages ?? []).map((p): Page => ({
-          id: p.id,
-          type: toClientPageType(p.type),
-          content: (p.content ?? {}) as Page['content'],
-        })),
-        createdAt: new Date(savedWork.createdAt),
-        updatedAt: new Date(savedWork.updatedAt),
-      };
-
-      setWork(normalized);
-      alert('작품이 저장되었습니다.');
-      return normalized.id;
     } catch (error) {
-      console.error('Save work error:', error);
-      alert('저장 중 오류가 발생했습니다.');
-      return null;
-    } finally {
-      setIsSaving(false);
+      console.warn('Auto-save error:', error);
     }
-  };
+  }, [pages, title, coverImage, currentWorkId]);
 
-  const previewWork = async () => {
-    let id = work.id;
-    if (!isDbId(id)) {
-      const savedId = await saveWork();
-      if (!savedId) return;
-      id = savedId;
-    }
-    window.open(`/dashboard/works/${id}/preview`, '_blank');
-  };
+  useEffect(() => {
+    const interval = window.setInterval(autoSave, 3 * 60 * 1000); // 3 minutes
+    return () => window.clearInterval(interval);
+  }, [autoSave]);
 
-  /* =========================
-     Render
-     ========================= */
+  // Export and share handlers
+  const handleExportPDF = () => toast.info('PDF 내보내기 기능이 곧 지원됩니다');
+  const handleShare = () => toast.info('공유 기능이 곧 지원됩니다');
+
+  const selectedPage = selectedPageId ? pages.find((p) => p.id === selectedPageId) : null;
+
+  if (isBootLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">편집기를 준비하는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={work.title}
-                onChange={(e) =>
-                  setWork((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                    updatedAt: new Date(),
-                  }))
-                }
-                className="text-2xl font-bold bg-transparent border-none outline-none focus:bg-white focus:px-2 focus:rounded"
-                placeholder="작품 제목을 입력하세요"
-              />
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={previewWork}
-                className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                미리보기
-              </button>
-              <button
-                onClick={saveWork}
-                disabled={isSaving}
-                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {isSaving ? '저장 중...' : '저장'}
-              </button>
-            </div>
+      <header className="bg-white border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => router.back()}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              이전
+            </Button>
+            <h1 className="text-xl font-semibold">작품 만들기</h1>
+            {currentWorkId && <Badge variant="secondary">자동저장됨</Badge>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPreviewDialogOpen(true)}
+              disabled={pages.length === 0}
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              미리보기
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={pages.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              PDF 내보내기
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              disabled={pages.length === 0}
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              공유하기
+            </Button>
+            <Button
+              onClick={() => setIsSaveDialogOpen(true)}
+              disabled={pages.length === 0 || isLoading}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isLoading ? '저장 중...' : '저장'}
+            </Button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Body */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left Sidebar - Tools */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Add Page Tools */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4">페이지 추가</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => addPage('image')}
-                  className="w-full flex items-center px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100"
-                >
-                  <ImageIcon className="mr-3 h-5 w-5" />
-                  사진 페이지
-                </button>
-                <button
-                  onClick={() => addPage('text')}
-                  className="w-full flex items-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
-                >
-                  <Type className="mr-3 h-5 w-5" />
-                  텍스트 페이지
-                </button>
-                <button
-                  onClick={() => addPage('mixed')}
-                  className="w-full flex items-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100"
-                >
-                  <Plus className="mr-3 h-5 w-5" />
-                  혼합 페이지
-                </button>
-              </div>
+      <div className="flex h-[calc(100vh-81px)]">
+        {/* Left Panel - Page List */}
+        <div className="w-80 bg-white border-r flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-medium">페이지</h2>
+              <Badge variant="secondary">{pages.length}</Badge>
             </div>
 
-            {/* Cover Image Section */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4">표지 이미지</h3>
-
-              {work.coverImage ? (
-                <div className="space-y-4">
-                  <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
-                    <img
-                      src={work.coverImage}
-                      alt="표지 이미지"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setShowCoverSelector(true)}
-                      className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm rounded-lg hover:bg-blue-100"
-                    >
-                      변경
-                    </button>
-                    <button
-                      onClick={removeCoverImage}
-                      className="px-3 py-2 bg-red-50 text-red-700 text-sm rounded-lg hover:bg-red-100"
-                    >
-                      제거
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="aspect-[3/4] bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <ImageIcon className="mx-auto h-12 w-12 mb-2" />
-                      <p className="text-sm">표지 없음</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowCoverSelector(true)}
-                    className="w-full px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100"
-                  >
-                    표지 이미지 설정
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Image Upload */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4">사진 업로드</h3>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50"
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addPage('text')}
+                className="flex flex-col items-center gap-1 h-auto py-2"
               >
-                <div className="text-center">
-                  <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">클릭하여 사진 업로드</p>
-                </div>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+                <Type className="w-4 h-4" />
+                <span className="text-xs">텍스트</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addPage('image')}
+                className="flex flex-col items-center gap-1 h-auto py-2"
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span className="text-xs">이미지</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addPage('mixed')}
+                className="flex flex-col items-center gap-1 h-auto py-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="text-xs">혼합</span>
+              </Button>
             </div>
-
-            {/* Page Properties */}
-            {selectedPage && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4">페이지 설정</h3>
-
-                {/* Text Style Controls */}
-                {(selectedPage.type === 'text' || selectedPage.type === 'mixed') && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        폰트 크기
-                      </label>
-                      <input
-                        type="range"
-                        min="12"
-                        max="72"
-                        value={selectedPage.content.textStyle?.fontSize || 16}
-                        onChange={(e) =>
-                          updatePageContent(selectedPage.id, {
-                            textStyle: {
-                              ...selectedPage.content.textStyle!,
-                              fontSize: parseInt(e.target.value, 10)
-                            }
-                          })
-                        }
-                        className="w-full"
-                      />
-                      <span className="text-xs text-gray-500">
-                        {selectedPage.content.textStyle?.fontSize}px
-                      </span>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        폰트 색상
-                      </label>
-                      <input
-                        type="color"
-                        value={selectedPage.content.textStyle?.color || '#000000'}
-                        onChange={(e) =>
-                          updatePageContent(selectedPage.id, {
-                            textStyle: {
-                              ...selectedPage.content.textStyle!,
-                              color: e.target.value
-                            }
-                          })
-                        }
-                        className="w-full h-10 rounded border"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        정렬
-                      </label>
-                      <div className="flex space-x-2">
-                        {(['left', 'center', 'right'] as const).map((align) => (
-                          <button
-                            key={align}
-                            onClick={() =>
-                              updatePageContent(selectedPage.id, {
-                                textStyle: {
-                                  ...selectedPage.content.textStyle!,
-                                  align
-                                }
-                              })
-                            }
-                            className={`p-2 rounded ${
-                              selectedPage.content.textStyle?.align === align
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 hover:bg-gray-200'
-                            }`}
-                          >
-                            {align === 'left' && <AlignLeft className="h-4 w-4" />}
-                            {align === 'center' && <AlignCenter className="h-4 w-4" />}
-                            {align === 'right' && <AlignRight className="h-4 w-4" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() =>
-                          updatePageContent(selectedPage.id, {
-                            textStyle: {
-                              ...selectedPage.content.textStyle!,
-                              bold: !selectedPage.content.textStyle?.bold
-                            }
-                          })
-                        }
-                        className={`p-2 rounded ${
-                          selectedPage.content.textStyle?.bold
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        <Bold className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          updatePageContent(selectedPage.id, {
-                            textStyle: {
-                              ...selectedPage.content.textStyle!,
-                              italic: !selectedPage.content.textStyle?.italic
-                            }
-                          })
-                        }
-                        className={`p-2 rounded ${
-                          selectedPage.content.textStyle?.italic
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        <Italic className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Image Style Controls */}
-                {(selectedPage.type === 'image' || selectedPage.type === 'mixed') &&
-                  selectedPage.content.image && (
-                    <div className="space-y-4 mt-6">
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium mb-3">이미지 편집</h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() =>
-                              updatePageContent(selectedPage.id, {
-                                imageStyle: {
-                                  ...selectedPage.content.imageStyle!,
-                                  rotation:
-                                    (selectedPage.content.imageStyle?.rotation || 0) + 90
-                                }
-                              })
-                            }
-                            className="p-2 bg-gray-100 rounded hover:bg-gray-200"
-                            title="시계방향 회전"
-                          >
-                            <RotateCw className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updatePageContent(selectedPage.id, {
-                                imageStyle: {
-                                  ...selectedPage.content.imageStyle!,
-                                  rotation:
-                                    (selectedPage.content.imageStyle?.rotation || 0) - 90
-                                }
-                              })
-                            }
-                            className="p-2 bg-gray-100 rounded hover:bg-gray-200"
-                            title="반시계방향 회전"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updatePageContent(selectedPage.id, {
-                                imageStyle: {
-                                  ...selectedPage.content.imageStyle!,
-                                  flipH: !selectedPage.content.imageStyle?.flipH
-                                }
-                              })
-                            }
-                            className={`p-2 rounded ${
-                              selectedPage.content.imageStyle?.flipH
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 hover:bg-gray-200'
-                            }`}
-                            title="좌우 대칭"
-                          >
-                            <FlipHorizontal className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              updatePageContent(selectedPage.id, {
-                                imageStyle: {
-                                  ...selectedPage.content.imageStyle!,
-                                  flipV: !selectedPage.content.imageStyle?.flipV
-                                }
-                              })
-                            }
-                            className={`p-2 rounded ${
-                              selectedPage.content.imageStyle?.flipV
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 hover:bg-gray-200'
-                            }`}
-                            title="상하 대칭"
-                          >
-                            <FlipVertical className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-              </div>
-            )}
           </div>
 
-          {/* Main Content - Pages */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">페이지 ({work.pages.length}개)</h2>
-                <div className="text-sm text-gray-500">
-                  드래그하거나 화살표 버튼으로 순서를 변경할 수 있습니다
-                </div>
-              </div>
-
-              {work.pages.length === 0 ? (
-                <div className="text-center py-16">
-                  <ImageIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    첫 번째 페이지를 추가해보세요
-                  </h3>
-                  <p className="text-gray-600 mb-8">
-                    사진이나 텍스트로 나만의 작품을 만들어보세요
-                  </p>
-                  <div className="flex justify-center space-x-4">
-                    <button
-                      onClick={() => addPage('image')}
-                      className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      <ImageIcon className="mr-2 h-5 w-5" />
-                      사진 페이지 추가
-                    </button>
-                    <button
-                      onClick={() => addPage('text')}
-                      className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      <Type className="mr-2 h-5 w-5" />
-                      텍스트 페이지 추가
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  {work.pages.map((page, index) => (
-                    <div
-                      key={page.id}
-                      className={`relative group border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                        selectedPageId === page.id
-                          ? 'border-blue-500 shadow-lg'
-                          : 'border-gray-200 hover:border-gray-300'
-                      } ${draggedPageId === page.id ? 'opacity-50' : ''}`}
-                      draggable
-                      onClick={() => setSelectedPageId(page.id)}
-                      onDragStart={(e) => handleDragStart(e, page.id)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, page.id)}
-                    >
-                      {/* Drag Handle */}
-                      <div className="absolute top-2 left-8 bg-black/50 text-white p-1 rounded cursor-move opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                        <GripVertical className="h-3 w-3" />
-                      </div>
-
-                      {/* Page Number */}
-                      <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">
-                        {index + 1}
-                      </div>
-
-                      {/* Page Order Controls */}
-                      <div className="absolute top-2 right-12 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            movePageUp(page.id);
-                          }}
-                          disabled={index === 0}
-                          className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="위로 이동"
-                        >
-                          <ChevronUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            movePageDown(page.id);
-                          }}
-                          disabled={index === work.pages.length - 1}
-                          className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="아래로 이동"
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                      </div>
-
-                      {/* Delete Button */}
-                      <button
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {pages.map((page, index) => (
+              <Card
+                key={page.id}
+                className={`cursor-pointer transition-colors ${
+                  selectedPageId === page.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                }`}
+                onClick={() => setSelectedPageId(page.id)}
+              >
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">페이지 {index + 1}</span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          deletePage(page.id);
+                          movePage(page.id, 'up');
                         }}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        disabled={index === 0}
+                        className="h-6 w-6 p-0"
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-
-                      {/* Page Content Preview */}
-                      <div className="aspect-[3/4] bg-white">
-                        <PagePreview page={page} />
-                      </div>
-
-                      {/* Page Info */}
-                      <div className="p-3 bg-gray-50 border-top">
-                        <p className="text-sm font-medium capitalize">{page.type} 페이지</p>
-                        {page.content.text && (
-                          <p className="text-xs text-gray-500 truncate mt-1">
-                            {page.content.text}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Drop Indicator */}
-                      {draggedPageId && draggedPageId !== page.id && (
-                        <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50/20 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                          <div className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
-                            여기에 놓기
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Selected Page Editor */}
-              {selectedPage && (
-                <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">페이지 편집</h3>
-
-                  {(selectedPage.type === 'text' || selectedPage.type === 'mixed') && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        텍스트 내용
-                      </label>
-                      <textarea
-                        value={selectedPage.content.text || ''}
-                        onChange={(e) =>
-                          updatePageContent(selectedPage.id, { text: e.target.value })
-                        }
-                        className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="텍스트를 입력하세요..."
-                        style={{
-                          fontSize: selectedPage.content.textStyle?.fontSize || 16,
-                          color: selectedPage.content.textStyle?.color || '#000000',
-                          textAlign: selectedPage.content.textStyle?.align || 'left',
-                          fontWeight: selectedPage.content.textStyle?.bold ? 'bold' : 'normal',
-                          fontStyle: selectedPage.content.textStyle?.italic ? 'italic' : 'normal'
+                        ↑
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          movePage(page.id, 'down');
                         }}
-                      />
+                        disabled={index === pages.length - 1}
+                        className="h-6 w-6 p-0"
+                      >
+                        ↓
+                      </Button>
                     </div>
-                  )}
+                  </div>
 
-                  {(selectedPage.type === 'image' || selectedPage.type === 'mixed') &&
-                    !selectedPage.content.image && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          이미지 추가
-                        </label>
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full flex items-center justify-center px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-white"
-                        >
-                          <div className="text-center">
-                            <ImageIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-600">클릭하여 이미지 업로드</p>
-                          </div>
-                        </button>
+                  <div className="text-xs text-gray-500 mb-2">
+                    {page.contentType === 'text' && '텍스트'}
+                    {page.contentType === 'image' && '이미지'}
+                    {page.contentType === 'mixed' && '텍스트+이미지'}
+                  </div>
+
+                  <div className="space-y-2">
+                    {page.contentJson.imageUrl && (
+                      <div className="w-full h-16 bg-gray-100 rounded border overflow-hidden">
+                        <img src={page.contentJson.imageUrl} alt="" className="w-full h-full object-cover" />
                       </div>
                     )}
-                </div>
-              )}
-            </div>
+                    {page.contentJson.text && (
+                      <div className="text-xs text-gray-600 line-clamp-2">{page.contentJson.text}</div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicatePage(page.id);
+                      }}
+                      className="h-6 px-2 text-xs"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPageToDelete(page.id);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+        </div>
+
+        {/* Center Editor */}
+        <div className="flex-1 flex flex-col">
+          {selectedPage ? (
+            <>
+              {/* Toolbar */}
+              <div className="bg-white border-b p-4">
+                <Tabs defaultValue="content" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="content">내용</TabsTrigger>
+                    <TabsTrigger value="style">스타일</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="content" className="mt-4 space-y-4">
+                    {(selectedPage.contentType === 'image' || selectedPage.contentType === 'mixed') && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">이미지</label>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                            <Plus className="w-4 h-4 mr-2" /> 이미지 추가
+                          </Button>
+                          {selectedPage.contentJson.imageUrl && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startImageEdit(selectedPage.contentJson.imageUrl!)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" /> 편집
+                            </Button>
+                          )}
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </div>
+                    )}
+
+                    {(selectedPage.contentType === 'text' || selectedPage.contentType === 'mixed') && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">텍스트</label>
+                        <Textarea
+                          value={selectedPage.contentJson.text || ''}
+                          onChange={(e) => updatePageContent(selectedPage.id, { text: e.target.value })}
+                          placeholder="텍스트를 입력하세요"
+                          rows={4}
+                        />
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="style" className="mt-4 space-y-4">
+                    {(selectedPage.contentType === 'text' || selectedPage.contentType === 'mixed') && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">폰트</label>
+                          <Select
+                            value={selectedPage.contentJson.fontFamily || '나눔스퀘어'}
+                            onValueChange={(v) => updatePageContent(selectedPage.id, { fontFamily: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="나눔스퀘어">나눔스퀘어</SelectItem>
+                              <SelectItem value="나눔고딕">나눔고딕</SelectItem>
+                              <SelectItem value="맑은 고딕">맑은 고딕</SelectItem>
+                              <SelectItem value="Arial">Arial</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">크기</label>
+                          <Select
+                            value={(selectedPage.contentJson.fontSize || 16).toString()}
+                            onValueChange={(v) => updatePageContent(selectedPage.id, { fontSize: Number(v) })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="12">12px</SelectItem>
+                              <SelectItem value="14">14px</SelectItem>
+                              <SelectItem value="16">16px</SelectItem>
+                              <SelectItem value="18">18px</SelectItem>
+                              <SelectItem value="20">20px</SelectItem>
+                              <SelectItem value="24">24px</SelectItem>
+                              <SelectItem value="28">28px</SelectItem>
+                              <SelectItem value="32">32px</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">두께</label>
+                          <Select
+                            value={selectedPage.contentJson.fontWeight || 'normal'}
+                            onValueChange={(v) => updatePageContent(selectedPage.id, { fontWeight: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="normal">일반</SelectItem>
+                              <SelectItem value="bold">굵게</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">정렬</label>
+                          <Select
+                            value={selectedPage.contentJson.textAlign || 'left'}
+                            onValueChange={(v) =>
+                              updatePageContent(selectedPage.id, { textAlign: v as 'left' | 'center' | 'right' })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="left">왼쪽 정렬</SelectItem>
+                              <SelectItem value="center">가운데 정렬</SelectItem>
+                              <SelectItem value="right">오른쪽 정렬</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">색상</label>
+                          <Input
+                            type="color"
+                            value={selectedPage.contentJson.color || '#000000'}
+                            onChange={(e) => updatePageContent(selectedPage.id, { color: e.target.value })}
+                            className="h-10"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedPage.contentType === 'image' || selectedPage.contentType === 'mixed') && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">이미지 크기</label>
+                          <Select
+                            value={selectedPage.contentJson.imageSize || 'medium'}
+                            onValueChange={(v) =>
+                              updatePageContent(selectedPage.id, {
+                                imageSize: v as 'small' | 'medium' | 'large' | 'full',
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="small">작게</SelectItem>
+                              <SelectItem value="medium">보통</SelectItem>
+                              <SelectItem value="large">크게</SelectItem>
+                              <SelectItem value="full">전체</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {selectedPage.contentType === 'mixed' && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">이미지 위치</label>
+                            <Select
+                              value={selectedPage.contentJson.imagePosition || 'top'}
+                              onValueChange={(v) =>
+                                updatePageContent(selectedPage.id, {
+                                  imagePosition: v as 'top' | 'bottom' | 'left' | 'right',
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="top">위</SelectItem>
+                                <SelectItem value="bottom">아래</SelectItem>
+                                <SelectItem value="left">왼쪽</SelectItem>
+                                <SelectItem value="right">오른쪽</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Preview Area */}
+              <div className="flex-1 p-6 overflow-auto">
+                <div className="max-w-2xl mx-auto">
+                  <Card className="min-h-[400px]">
+                    <CardContent className="p-8">
+                      {selectedPage.contentType === 'mixed' ? (
+                        <div
+                          className={`space-y-4 ${
+                            selectedPage.contentJson.imagePosition === 'left' ||
+                            selectedPage.contentJson.imagePosition === 'right'
+                              ? 'flex gap-4 items-start'
+                              : ''
+                          }`}
+                        >
+                          {selectedPage.contentJson.imageUrl && (
+                            <div
+                              className={`
+                                ${selectedPage.contentJson.imagePosition === 'top' ? 'order-1' : ''}
+                                ${selectedPage.contentJson.imagePosition === 'bottom' ? 'order-2' : ''}
+                                ${selectedPage.contentJson.imagePosition === 'left' ? 'order-1 flex-shrink-0' : ''}
+                                ${selectedPage.contentJson.imagePosition === 'right' ? 'order-2 flex-shrink-0' : ''}
+                                ${selectedPage.contentJson.imageSize === 'small' ? 'w-32 h-32' : ''}
+                                ${selectedPage.contentJson.imageSize === 'medium' ? 'w-48 h-48' : ''}
+                                ${selectedPage.contentJson.imageSize === 'large' ? 'w-64 h-64' : ''}
+                                ${selectedPage.contentJson.imageSize === 'full' ? 'w-full' : ''}
+                              `}
+                            >
+                              <img
+                                src={selectedPage.contentJson.imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => startImageEdit(selectedPage.contentJson.imageUrl!)}
+                              />
+                            </div>
+                          )}
+
+                          {selectedPage.contentJson.text && (
+                            <div
+                              className={`
+                                ${selectedPage.contentJson.imagePosition === 'top' ? 'order-2' : ''}
+                                ${selectedPage.contentJson.imagePosition === 'bottom' ? 'order-1' : ''}
+                                ${selectedPage.contentJson.imagePosition === 'left' ? 'order-2 flex-1' : ''}
+                                ${selectedPage.contentJson.imagePosition === 'right' ? 'order-1 flex-1' : ''}
+                              `}
+                              style={{
+                                fontSize: `${selectedPage.contentJson.fontSize || 16}px`,
+                                fontFamily: selectedPage.contentJson.fontFamily || 'inherit',
+                                fontWeight: selectedPage.contentJson.fontWeight || 'normal',
+                                color: selectedPage.contentJson.color || 'inherit',
+                                textAlign: selectedPage.contentJson.textAlign || 'left',
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              {selectedPage.contentJson.text}
+                            </div>
+                          )}
+                        </div>
+                      ) : selectedPage.contentType === 'image' ? (
+                        selectedPage.contentJson.imageUrl ? (
+                          <div className="text-center">
+                            <img
+                              src={selectedPage.contentJson.imageUrl}
+                              alt=""
+                              className={`
+                                mx-auto rounded cursor-pointer hover:opacity-80 transition-opacity
+                                ${selectedPage.contentJson.imageSize === 'small' ? 'max-w-xs' : ''}
+                                ${selectedPage.contentJson.imageSize === 'medium' ? 'max-w-md' : ''}
+                                ${selectedPage.contentJson.imageSize === 'large' ? 'max-w-lg' : ''}
+                                ${selectedPage.contentJson.imageSize === 'full' ? 'w-full' : ''}
+                              `}
+                              onClick={() => startImageEdit(selectedPage.contentJson.imageUrl!)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-center text-gray-400 py-16">
+                            <ImageIcon className="w-16 h-16 mx-auto mb-4" />
+                            <p>이미지를 추가해주세요</p>
+                          </div>
+                        )
+                      ) : selectedPage.contentJson.text ? (
+                        <div
+                          style={{
+                            fontSize: `${selectedPage.contentJson.fontSize || 16}px`,
+                            fontFamily: selectedPage.contentJson.fontFamily || 'inherit',
+                            fontWeight: selectedPage.contentJson.fontWeight || 'normal',
+                            color: selectedPage.contentJson.color || 'inherit',
+                            textAlign: selectedPage.contentJson.textAlign || 'left',
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {selectedPage.contentJson.text}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-400 py-16">
+                          <Type className="w-16 h-16 mx-auto mb-4" />
+                          <p>텍스트를 입력해주세요</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <Plus className="w-16 h-16 mx-auto mb-4" />
+                <p className="text-lg mb-2">새 페이지를 추가해주세요</p>
+                <p className="text-sm">왼쪽 패널에서 페이지 유형을 선택하세요</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Cover Selector Modal */}
-      {showCoverSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold">표지 이미지 선택</h3>
-                <button
-                  onClick={() => setShowCoverSelector(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Upload New Cover */}
-              <div className="mb-8">
-                <h4 className="text-lg font-medium mb-4">새 이미지 업로드</h4>
-                <button
-                  onClick={() => coverInputRef.current?.click()}
-                  className="w-full flex items-center justify-center px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50"
-                >
-                  <div className="text-center">
-                    <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600">클릭하여 표지 이미지 업로드</p>
-                  </div>
-                </button>
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverImageUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Select from Pages */}
-              {work.pages.filter((p) => p.content.image).length > 0 ? (
-                <div>
-                  <h4 className="text-lg font-medium mb-4">페이지에서 선택</h4>
-                  <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
-                    {work.pages
-                      .filter((p) => p.content.image)
-                      .map((page) => (
-                        <button
-                          key={page.id}
-                          onClick={() => setCoverFromPage(page)}
-                          className="relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-purple-500 transition-all group"
-                        >
-                          <img
-                            src={page.content.image!}
-                            alt={`페이지 ${work.pages.indexOf(page) + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
-                            <div className="bg-white text-gray-900 px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                              페이지 {work.pages.indexOf(page) + 1}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <ImageIcon className="mx-auto h-12 w-12 mb-4" />
-                  <p>이미지가 있는 페이지가 없습니다.</p>
-                  <p className="text-sm">먼저 사진 페이지를 추가해보세요.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* =========================
-   Page Preview
-   ========================= */
-
-function PagePreview({ page }: { page: Page }) {
-  const imageStyle = page.content.imageStyle;
-  const textStyle = page.content.textStyle;
-
-  return (
-    <div className="w-full h-full flex flex-col relative overflow-hidden">
-      {/* Image Content */}
-      {page.content.image && (
-        <div
-          className={`${
-            page.type === 'mixed' ? 'flex-1' : 'w-full h-full'
-          } flex items-center justify-center bg-gray-100`}
-        >
-          <img
-            src={page.content.image}
-            alt="Page content"
-            className="max-w-full max-h-full object-contain"
-            style={{
-              transform: `
-                rotate(${imageStyle?.rotation || 0}deg)
-                scaleX(${imageStyle?.flipH ? -1 : 1})
-                scaleY(${imageStyle?.flipV ? -1 : 1})
-              `
-            }}
-          />
-        </div>
+      {/* Dialogs */}
+      {isImageEditorOpen && (
+        <ImageEditor
+          src={editingImageSrc}
+          alt="편집할 이미지"
+          onSave={handleImageEditSave}
+          onCancel={() => setIsImageEditorOpen(false)}
+        />
       )}
 
-      {/* Text Content */}
-      {page.content.text && (
-        <div
-          className={`${
-            page.type === 'mixed' ? 'flex-1' : 'w-full h-full'
-          } p-3 flex items-center`}
-        >
-          <p
-            className="w-full line-clamp-6 text-xs"
-            style={{
-              // 미리보기 가독성: 12px 이하로 clamp
-              fontSize: Math.min(textStyle?.fontSize || 16, 12),
-              color: textStyle?.color || '#000000',
-              textAlign: textStyle?.align || 'left',
-              fontWeight: textStyle?.bold ? 'bold' : 'normal',
-              fontStyle: textStyle?.italic ? 'italic' : 'normal'
-            }}
-          >
-            {page.content.text}
-          </p>
-        </div>
-      )}
+      <SaveDialog
+        isOpen={isSaveDialogOpen}
+        onClose={() => setIsSaveDialogOpen(false)}
+        onSave={handleSave}
+        currentTitle={title}
+        currentCoverImage={coverImage}
+        isLoading={isLoading}
+        initialStatus={initialStatus}
+      />
 
-      {/* Empty State */}
-      {!page.content.image && !page.content.text && (
-        <div className="w-full h-full flex items-center justify-center bg-gray-100">
-          <div className="text-center text-gray-400">
-            {page.type === 'image' && <ImageIcon className="mx-auto h-8 w-8 mb-2" />}
-            {page.type === 'text' && <Type className="mx-auto h-8 w-8 mb-2" />}
-            {page.type === 'mixed' && <Plus className="mx-auto h-8 w-8 mb-2" />}
-            <p className="text-xs">
-              {page.type === 'image'
-                ? '이미지 없음'
-                : page.type === 'text'
-                ? '텍스트 없음'
-                : '내용 없음'}
-            </p>
-          </div>
-        </div>
-      )}
+      <PreviewDialog
+        isOpen={isPreviewDialogOpen}
+        onClose={() => setIsPreviewDialogOpen(false)}
+        pages={pages}
+        title={title || '제목 없음'}
+      />
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>페이지 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 페이지를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPageToDelete(null)}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pageToDelete && deletePage(pageToDelete)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

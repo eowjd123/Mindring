@@ -5,21 +5,24 @@ import {
   Calendar,
   Download,
   Edit2,
+  Home,
+  LogOut,
   Plus,
   Save,
   Trash2,
   Upload,
   User,
-  LogOut,
-  Home,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface LifeEvent {
   id: string;
   year: number;
+  month?: number; // ✅ 추가
+  day?: number;   // ✅ 추가
   title: string;
   description: string;
   emotion: "VERY_HAPPY" | "HAPPY" | "NEUTRAL" | "SAD" | "VERY_SAD";
@@ -31,8 +34,10 @@ interface UserInfo {
   location: string;
 }
 
+type EmotionKey = LifeEvent["emotion"];
+
 const emotionConfig: Record<
-  LifeEvent["emotion"],
+  EmotionKey,
   { label: string; value: number; color: string }
 > = {
   VERY_HAPPY: { label: "😊", value: 5, color: "#10B981" },
@@ -68,14 +73,10 @@ export default function LifeGraphPage() {
       setIsLoading(true);
       setError(null);
 
-      console.log("Loading life graph data...");
-
       const response = await fetch("/api/life-graph", {
         method: "GET",
         credentials: "include",
       });
-
-      console.log("Response status:", response.status);
 
       if (response.status === 401) {
         router.push("/login");
@@ -87,28 +88,41 @@ export default function LifeGraphPage() {
       }
 
       const data = await response.json();
-      console.log("Received data:", data);
 
       if (data.success && data.userInfo && data.events) {
         setUserInfo(data.userInfo);
 
-        const validEvents = data.events.filter(
-          (event: LifeEvent) =>
-            event.year &&
-            !isNaN(event.year) &&
+        const validEvents: LifeEvent[] = data.events.filter((event: LifeEvent) => {
+          const basic =
+            typeof event.year === "number" &&
+            !Number.isNaN(event.year) &&
             event.year > 1900 &&
             event.year < 2100 &&
-            event.title &&
-            event.emotion in emotionConfig
-        );
+            !!event.title &&
+            (event.emotion as EmotionKey) in emotionConfig;
+
+          // month/day가 있을 때만 추가 검증
+          const monthOk =
+            event.month === undefined ||
+            (Number.isInteger(event.month) && event.month! >= 1 && event.month! <= 12);
+
+          const dayOk =
+            event.day === undefined ||
+            (Number.isInteger(event.day) &&
+              (() => {
+                if (!event.month) return true; // 월이 없으면 일 검증 생략
+                const daysInMonth = new Date(event.year, event.month, 0).getDate(); // month=1~12 기준
+                return event.day! >= 1 && event.day! <= daysInMonth;
+              })());
+
+          return basic && monthOk && dayOk;
+        });
 
         setEvents(validEvents);
       } else {
-        console.warn("Invalid data format:", data);
         setError(data.error || "데이터 형식이 올바르지 않습니다.");
       }
     } catch (error) {
-      console.error("Failed to load life graph data:", error);
       setError(error instanceof Error ? error.message : "데이터 로드 실패");
     } finally {
       setIsLoading(false);
@@ -120,8 +134,6 @@ export default function LifeGraphPage() {
 
     setIsSaving(true);
     try {
-      console.log("Saving life graph data...");
-
       const response = await fetch("/api/life-graph", {
         method: "POST",
         headers: {
@@ -135,19 +147,17 @@ export default function LifeGraphPage() {
       });
 
       const result = await response.json();
-      console.log("Save result:", result);
 
       if (result.success) {
-        alert("인생그래프가 저장되었습니다.");
         setError(null);
+        return true;
       } else {
         throw new Error(result.error || "Save failed");
       }
     } catch (error) {
-      console.error("Failed to save data:", error);
       const errorMessage = error instanceof Error ? error.message : "저장 실패";
-      alert(`저장 중 오류가 발생했습니다: ${errorMessage}`);
       setError(errorMessage);
+      throw error;
     } finally {
       setIsSaving(false);
     }
@@ -184,10 +194,16 @@ export default function LifeGraphPage() {
       return;
     }
 
-    await saveAllData();
-    setIsEditing(false);
+    try {
+      await saveAllData();
+      alert("사용자 정보가 저장되었습니다.");
+      setIsEditing(false);
+    } catch {
+      alert("저장 중 오류가 발생했습니다.");
+    }
   };
 
+  // 개선된 저장 로직 - 한 번의 클릭으로 저장 완료
   const saveEvent = async (eventData: Omit<LifeEvent, "id">) => {
     if (!eventData.title.trim()) {
       alert("제목을 입력해주세요.");
@@ -204,24 +220,67 @@ export default function LifeGraphPage() {
       return;
     }
 
+    // 월/일 유효성(선택 시만)
+    if (eventData.month !== undefined) {
+      if (!Number.isInteger(eventData.month) || eventData.month < 1 || eventData.month > 12) {
+        alert("월은 1~12 사이의 정수여야 합니다.");
+        return;
+      }
+    }
+    if (eventData.day !== undefined) {
+      if (eventData.month === undefined) {
+        alert("일을 입력하려면 월을 먼저 입력하세요.");
+        return;
+      }
+      const daysInMonth = new Date(eventData.year, eventData.month, 0).getDate();
+      if (!Number.isInteger(eventData.day) || eventData.day < 1 || eventData.day > daysInMonth) {
+        alert(`${eventData.month}월은 1일부터 ${daysInMonth}일까지만 있습니다.`);
+        return;
+      }
+    }
+
     try {
+      let updatedEvents: LifeEvent[];
+
       if (editingEvent) {
-        const updatedEvent = { ...eventData, id: editingEvent.id };
-        setEvents((prev) =>
-          prev.map((e) => (e.id === editingEvent.id ? updatedEvent : e))
-        );
+        const updatedEvent: LifeEvent = { ...eventData, id: editingEvent.id };
+        updatedEvents = events.map((e) => (e.id === editingEvent.id ? updatedEvent : e));
       } else {
-        const newEvent = { ...eventData, id: Date.now().toString() };
-        setEvents((prev) => [...prev, newEvent]);
+        const newEvent: LifeEvent = { ...eventData, id: Date.now().toString() };
+        updatedEvents = [...events, newEvent];
       }
 
-      await saveAllData();
+      // 상태 업데이트
+      setEvents(updatedEvents);
 
-      setShowForm(false);
-      setEditingEvent(null);
+      // 서버에 저장 (한 번의 호출로 통합)
+      const response = await fetch("/api/life-graph", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          userInfo,
+          events: updatedEvents,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("추억이 저장되었습니다.");
+        setShowForm(false);
+        setEditingEvent(null);
+        setError(null);
+      } else {
+        throw new Error(result.error || "Save failed");
+      }
     } catch (error) {
       console.error("Failed to save event:", error);
       alert("저장 중 오류가 발생했습니다.");
+      // 실패 시 이전 상태로 복원
+      loadData();
     }
   };
 
@@ -229,11 +288,28 @@ export default function LifeGraphPage() {
     if (!confirm("이 추억을 삭제하시겠습니까?")) return;
 
     try {
-      setEvents((prev) => prev.filter((e) => e.id !== eventId));
-      await saveAllData();
+      const updatedEvents = events.filter((e) => e.id !== eventId);
+      setEvents(updatedEvents);
+
+      // 서버에 삭제된 상태 저장
+      await fetch("/api/life-graph", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          userInfo,
+          events: updatedEvents,
+        }),
+      });
+
+      alert("추억이 삭제되었습니다.");
     } catch (error) {
       console.error("Failed to delete event:", error);
       alert("삭제 중 오류가 발생했습니다.");
+      // 실패 시 데이터 다시 로드
+      loadData();
     }
   };
 
@@ -269,8 +345,8 @@ export default function LifeGraphPage() {
       const data = JSON.parse(text);
 
       if (data.userInfo && data.events) {
-        setUserInfo(data.userInfo);
-        setEvents(data.events);
+        setUserInfo(data.userInfo as UserInfo);
+        setEvents(data.events as LifeEvent[]);
         alert("JSON 파일을 성공적으로 불러왔습니다.");
       } else {
         throw new Error("Invalid JSON format");
@@ -379,8 +455,16 @@ export default function LifeGraphPage() {
               JSON 내보내기
             </button>
 
+            {/* 수동 저장 버튼 */}
             <button
-              onClick={saveAllData}
+              onClick={async () => {
+                try {
+                  await saveAllData();
+                  alert("인생그래프가 저장되었습니다.");
+                } catch {
+                  alert("저장 중 오류가 발생했습니다.");
+                }
+              }}
               disabled={isSaving}
               className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
             >
@@ -455,7 +539,7 @@ export default function LifeGraphPage() {
                         }))
                       }
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      min="1900"
+                      min={1900}
                       max={new Date().getFullYear()}
                     />
                   </div>
@@ -504,7 +588,7 @@ export default function LifeGraphPage() {
               )}
             </div>
 
-            {/* Add Event */}
+            {/* 감정통계 그래프 이동 */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <button
                 onClick={() => router.push("/dashboard/life-graph/dashboard")}
@@ -523,13 +607,18 @@ export default function LifeGraphPage() {
               </h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {events
-                  .filter((event) => event.year && !isNaN(event.year))
-                  .sort((a, b) => b.year - a.year)
+                  .filter((event) => typeof event.year === "number" && !isNaN(event.year))
+                  .sort((a, b) => {
+                    // 연-월-일 정렬(월/일 없으면 0으로 취급)
+                    return (
+                      a.year - b.year ||
+                      (a.month ?? 0) - (b.month ?? 0) ||
+                      (a.day ?? 0) - (b.day ?? 0)
+                    );
+                  })
+                  .reverse()
                   .map((event, index) => (
-                    <div
-                      key={`event-${event.id}-${index}`}
-                      className="border rounded-lg p-3"
-                    >
+                    <div key={`event-${event.id}-${index}`} className="border rounded-lg p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center mb-1">
@@ -537,12 +626,12 @@ export default function LifeGraphPage() {
                               {emotionConfig[event.emotion].label}
                             </span>
                             <span className="font-medium text-gray-900">
-                              {event.year}년
+                              {event.year}
+                              {event.month ? `.${String(event.month).padStart(2, "0")}` : ""}
+                              {event.day ? `.${String(event.day).padStart(2, "0")}` : ""}년
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600 font-medium">
-                            {event.title}
-                          </p>
+                          <p className="text-sm text-gray-600 font-medium">{event.title}</p>
                           <p className="text-xs text-gray-500 mt-1 line-clamp-2">
                             {event.description}
                           </p>
@@ -620,16 +709,18 @@ function EventForm({
   onCancel,
   isDisabled = false,
 }: EventFormProps) {
-  const [formData, setFormData] = useState({
-    year: event?.year || new Date().getFullYear(),
-    title: event?.title || "",
-    description: event?.description || "",
-    emotion: event?.emotion || ("NEUTRAL" as const),
+  const [formData, setFormData] = useState<Omit<LifeEvent, "id">>({
+    year: event?.year ?? new Date().getFullYear(),
+    month: event?.month,
+    day: event?.day,
+    title: event?.title ?? "",
+    description: event?.description ?? "",
+    emotion: event?.emotion ?? ("NEUTRAL" as const),
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emotionEntries = Object.entries(emotionConfig) as Array<
-    [LifeEvent["emotion"], { label: string; value: number; color: string }]
+    [EmotionKey, { label: string; value: number; color: string }]
   >;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -652,6 +743,25 @@ function EventForm({
       return;
     }
 
+    // 월/일(선택) 검증
+    if (formData.month !== undefined) {
+      if (!Number.isInteger(formData.month) || formData.month < 1 || formData.month > 12) {
+        alert("월은 1~12 사이의 정수여야 합니다.");
+        return;
+      }
+    }
+    if (formData.day !== undefined) {
+      if (formData.month === undefined) {
+        alert("일을 입력하려면 월을 먼저 입력하세요.");
+        return;
+      }
+      const daysInMonth = new Date(formData.year, formData.month, 0).getDate();
+      if (!Number.isInteger(formData.day) || formData.day < 1 || formData.day > daysInMonth) {
+        alert(`${formData.month}월은 1일부터 ${daysInMonth}일까지만 있습니다.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await onSave(formData);
@@ -667,25 +777,69 @@ function EventForm({
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            년도 *
-          </label>
-          <input
-            type="number"
-            value={formData.year}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                year: parseInt(e.target.value) || 0,
-              }))
-            }
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            min="1900"
-            max="2100"
-            required
-            disabled={isSubmitting || isDisabled}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              년도 *
+            </label>
+            <input
+              type="number"
+              value={formData.year}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  year: parseInt(e.target.value) || 0,
+                }))
+              }
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              min={1900}
+              max={2100}
+              required
+              disabled={isSubmitting || isDisabled}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              월(선택)
+            </label>
+            <input
+              type="number"
+              value={formData.month ?? ""}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  month: e.target.value === "" ? undefined : parseInt(e.target.value) || 0,
+                }))
+              }
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              min={1}
+              max={12}
+              disabled={isSubmitting || isDisabled}
+              placeholder="1~12"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              일(선택)
+            </label>
+            <input
+              type="number"
+              value={formData.day ?? ""}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  day: e.target.value === "" ? undefined : parseInt(e.target.value) || 0,
+                }))
+              }
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              min={1}
+              max={31}
+              disabled={isSubmitting || isDisabled}
+              placeholder="1~31"
+            />
+          </div>
         </div>
 
         <div>
@@ -784,7 +938,7 @@ function LifeGraphChart({ userInfo, events, onAddEvent }: LifeGraphChartProps) {
 
     const validEvents = events.filter(
       (event) =>
-        event.year &&
+        typeof event.year === "number" &&
         !isNaN(event.year) &&
         event.year > 1900 &&
         event.year < 2100
@@ -792,9 +946,19 @@ function LifeGraphChart({ userInfo, events, onAddEvent }: LifeGraphChartProps) {
 
     if (validEvents.length === 0) return [];
 
-    const sortedEvents = [...validEvents].sort((a, b) => a.year - b.year);
+    const sortedEvents = [...validEvents].sort((a, b) => {
+      return (
+        a.year - b.year ||
+        (a.month ?? 0) - (b.month ?? 0) ||
+        (a.day ?? 0) - (b.day ?? 0)
+      );
+    });
+
     return sortedEvents.map((event, index) => ({
       year: event.year,
+      label:
+        event.year.toString() +
+        (event.month ? `.${String(event.month).padStart(2, "0")}` : ""),
       value: emotionConfig[event.emotion].value,
       color: emotionConfig[event.emotion].color,
       event,
@@ -891,7 +1055,7 @@ function LifeGraphChart({ userInfo, events, onAddEvent }: LifeGraphChartProps) {
             );
           })}
 
-          {/* Year axis */}
+          {/* Year/Month axis */}
           {graphPoints.map((point, index) => {
             const x = getX(index, n);
             return (
@@ -902,7 +1066,7 @@ function LifeGraphChart({ userInfo, events, onAddEvent }: LifeGraphChartProps) {
                 textAnchor="middle"
                 className="text-xs fill-gray-600"
               >
-                {point.year}
+                {point.label}
               </text>
             );
           })}
@@ -938,9 +1102,19 @@ function LifeGraphChart({ userInfo, events, onAddEvent }: LifeGraphChartProps) {
                   fill={point.color}
                   stroke="white"
                   strokeWidth="2"
-                  className="drop-shadow-sm cursor-pointer hover:r-10 transition-all"
+                  className="drop-shadow-sm cursor-pointer transition-transform hover:scale-105"
                 />
-                <title>{`${point.year}년: ${point.event.title}`}</title>
+                <title>
+                  {`${point.event.year}${
+                    point.event.month
+                      ? "." + String(point.event.month).padStart(2, "0")
+                      : ""
+                  }${
+                    point.event.day
+                      ? "." + String(point.event.day).padStart(2, "0")
+                      : ""
+                  } : ${point.event.title}`}
+                </title>
               </g>
             );
           })}

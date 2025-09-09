@@ -1,4 +1,29 @@
 // lib/utils.ts
+
+/**
+ * 클래스명을 조건부로 합치는 유틸리티 함수 (순수 JavaScript 구현)
+ */
+export function cn(...inputs: (string | undefined | null | boolean | Record<string, boolean>)[]): string {
+  const classes: string[] = []
+  
+  inputs.forEach(input => {
+    if (!input) return
+    
+    if (typeof input === 'string') {
+      classes.push(input)
+    } else if (typeof input === 'object') {
+      Object.entries(input).forEach(([key, value]) => {
+        if (value) {
+          classes.push(key)
+        }
+      })
+    }
+  })
+  
+  // 중복 클래스 제거 및 공백으로 조인
+  return [...new Set(classes.join(' ').split(' ').filter(Boolean))].join(' ')
+}
+
 export const normDeg = (deg: number): number => ((deg % 360) + 360) % 360;
 
 type PlainObject = Record<string, unknown>;

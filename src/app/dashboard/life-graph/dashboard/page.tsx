@@ -8,12 +8,12 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Pie,
+  PieChart as RechartsPieChart,
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  ResponsiveContainer,
-  Pie,
-  PieChart as RechartsPieChart,
 } from "recharts";
 import {
   ArrowLeft,
@@ -31,6 +31,8 @@ import React, { useEffect, useMemo, useState } from "react";
 interface LifeEvent {
   id: string;
   year: number;
+  month?: number;
+  day?: number;
   title: string;
   description: string;
   emotion: "VERY_HAPPY" | "HAPPY" | "NEUTRAL" | "SAD" | "VERY_SAD";
@@ -61,11 +63,14 @@ type EmotionStat = {
   color: string;
 };
 
-type YearlyPoint = {
-  year: number;
+type TimelinePoint = {
+  dateKey: string; // "2023" | "2023.03" | "2023.03.15"
+  displayDate: string; // "2023년" | "2023년 3월" | "2023년 3월 15일"
+  sortValue: number; // 정렬용 숫자값
   value: number; // 1~5 평균
   emotion: string; // 라벨 텍스트
   title: string; // 대표 타이틀
+  count: number; // 해당 시점의 이벤트 개수
 };
 
 export default function DashboardPage() {
@@ -85,12 +90,19 @@ export default function DashboardPage() {
   const loadData = async () => {
     try {
       const response = await fetch("/api/life-graph", {
-        headers: { "x-user-id": "test-user-id" },
+        method: "GET",
+        credentials: "include",
       });
+      
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.userInfo) setUserInfo(data.userInfo);
-        if (data.events) {
+        if (data.success && data.userInfo) setUserInfo(data.userInfo);
+        if (data.success && data.events) {
           const validEvents: LifeEvent[] = data.events.filter(
             (event: LifeEvent) =>
               event &&
@@ -106,7 +118,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Failed to load life graph data:", error);
-      // fallback sample
+      // fallback sample data
       setUserInfo({ name: "사용자", birthYear: 1990, location: "서울" });
       setEvents([
         {
@@ -119,6 +131,7 @@ export default function DashboardPage() {
         {
           id: "2",
           year: 2008,
+          month: 3,
           title: "대학 입학",
           description: "꿈을 향한 첫걸음",
           emotion: "VERY_HAPPY",
@@ -126,6 +139,8 @@ export default function DashboardPage() {
         {
           id: "3",
           year: 2012,
+          month: 2,
+          day: 15,
           title: "졸업",
           description: "새로운 도전",
           emotion: "HAPPY",
@@ -133,6 +148,8 @@ export default function DashboardPage() {
         {
           id: "4",
           year: 2013,
+          month: 4,
+          day: 1,
           title: "첫 직장",
           description: "사회생활 시작",
           emotion: "NEUTRAL",
@@ -140,6 +157,8 @@ export default function DashboardPage() {
         {
           id: "5",
           year: 2020,
+          month: 10,
+          day: 12,
           title: "결혼",
           description: "인생의 동반자",
           emotion: "VERY_HAPPY",
@@ -147,7 +166,8 @@ export default function DashboardPage() {
         {
           id: "6",
           year: 2020,
-          title: "신혼",
+          month: 11,
+          title: "신혼여행",
           description: "행복한 시작",
           emotion: "HAPPY",
         },
@@ -179,55 +199,86 @@ export default function DashboardPage() {
       .filter((s) => s.count > 0);
   }, [events]);
 
-  // 동일 연도 데이터 집계 → 평균값으로 단일 포인트 생성 (중복 tick 방지)
-  const yearlyEmotions = useMemo<YearlyPoint[]>(() => {
-    const byYear = new Map<
-      number,
-      { total: number; count: number; titles: string[] }
-    >();
-    for (const e of events) {
-      if (!e.year || isNaN(e.year)) continue;
-      const v = emotionConfig[e.emotion].value;
-      const cur = byYear.get(e.year) || { total: 0, count: 0, titles: [] };
-      cur.total += v;
-      cur.count += 1;
-      if (e.title) cur.titles.push(e.title);
-      byYear.set(e.year, cur);
-    }
-    const rows = Array.from(byYear.entries()).map(
-      ([year, { total, count, titles }]) => {
-        const avg = total / count;
-        const nearest = Math.round(avg);
-        const match = (
-          Object.values(emotionConfig) as Array<
-            (typeof emotionConfig)[EmotionKey]
-          >
-        ).find((c) => c.value === nearest);
-        return {
-          year,
-          value: Math.round(avg * 10) / 10,
-          emotion: (match ?? emotionConfig.NEUTRAL).label,
-          title: titles[0] || `${year}년의 기억 (${count}건)`,
-        };
+  // 시간순 감정 추이 (월/일 정보 포함)
+  const timelineData = useMemo<TimelinePoint[]>(() => {
+    if (events.length === 0) return [];
+
+    // 각 이벤트를 시간 키로 그룹화
+    const timeGroups = new Map<string, {
+      events: LifeEvent[];
+      sortValue: number;
+      displayDate: string;
+    }>();
+
+    events.forEach((event) => {
+      // 정렬을 위한 숫자값 생성
+      const sortValue = event.year + 
+        ((event.month || 6) - 1) / 12 + 
+        ((event.day || 15) - 1) / 365;
+
+      // 표시용 키와 라벨 생성
+      let dateKey: string;
+      let displayDate: string;
+
+      if (event.day && event.month) {
+        dateKey = `${event.year}.${String(event.month).padStart(2, '0')}.${String(event.day).padStart(2, '0')}`;
+        displayDate = `${event.year}년 ${event.month}월 ${event.day}일`;
+      } else if (event.month) {
+        dateKey = `${event.year}.${String(event.month).padStart(2, '0')}`;
+        displayDate = `${event.year}년 ${event.month}월`;
+      } else {
+        dateKey = `${event.year}`;
+        displayDate = `${event.year}년`;
       }
-    );
-    return rows.sort((a, b) => a.year - b.year);
+
+      if (!timeGroups.has(dateKey)) {
+        timeGroups.set(dateKey, {
+          events: [],
+          sortValue,
+          displayDate,
+        });
+      }
+      
+      timeGroups.get(dateKey)!.events.push(event);
+    });
+
+    // 각 그룹을 TimelinePoint로 변환
+    const points: TimelinePoint[] = Array.from(timeGroups.entries()).map(([dateKey, group]) => {
+      const avgValue = group.events.reduce((sum, e) => sum + emotionConfig[e.emotion].value, 0) / group.events.length;
+      const nearestValue = Math.round(avgValue);
+      const emotionMatch = Object.values(emotionConfig).find(c => c.value === nearestValue) || emotionConfig.NEUTRAL;
+      
+      return {
+        dateKey,
+        displayDate: group.displayDate,
+        sortValue: group.sortValue,
+        value: Math.round(avgValue * 10) / 10,
+        emotion: emotionMatch.label,
+        title: group.events[0].title + (group.events.length > 1 ? ` 외 ${group.events.length - 1}건` : ''),
+        count: group.events.length,
+      };
+    });
+
+    return points.sort((a, b) => a.sortValue - b.sortValue);
   }, [events]);
 
   // 10년 단위 평균 행복도
   const decadeData = useMemo(() => {
-    const acc: Record<
-      number,
-      { decade: string; total: number; count: number }
-    > = {};
-    for (const e of events) {
-      if (!e.year || isNaN(e.year)) continue;
+    const acc: Record<number, { decade: string; total: number; count: number }> = {};
+    
+    events.forEach((e) => {
+      if (!e.year || isNaN(e.year)) return;
       const decade = Math.floor(e.year / 10) * 10;
       const v = emotionConfig[e.emotion].value;
-      acc[decade] ??= { decade: `${decade}년대`, total: 0, count: 0 };
+      
+      if (!acc[decade]) {
+        acc[decade] = { decade: `${decade}년대`, total: 0, count: 0 };
+      }
+      
       acc[decade].total += v;
       acc[decade].count += 1;
-    }
+    });
+    
     return Object.values(acc)
       .map((s) => ({
         ...s,
@@ -260,11 +311,27 @@ export default function DashboardPage() {
   // 최근 5개 (정렬 시 원본 배열 불변 보장)
   const recentTrend = useMemo(() => {
     return [...events]
-      .sort((a, b) => b.year - a.year)
+      .sort((a, b) => {
+        // 년도 > 월 > 일 순으로 최신 순 정렬
+        if (a.year !== b.year) return b.year - a.year;
+        const aMonth = a.month || 0;
+        const bMonth = b.month || 0;
+        if (aMonth !== bMonth) return bMonth - aMonth;
+        const aDay = a.day || 0;
+        const bDay = b.day || 0;
+        return bDay - aDay;
+      })
       .slice(0, 5)
       .map((e) => ({
         title: e.title,
         year: e.year,
+        month: e.month,
+        day: e.day,
+        displayDate: e.day && e.month 
+          ? `${e.year}.${String(e.month).padStart(2, '0')}.${String(e.day).padStart(2, '0')}`
+          : e.month 
+          ? `${e.year}.${String(e.month).padStart(2, '0')}`
+          : `${e.year}`,
         value: emotionConfig[e.emotion].value,
         emotion: emotionConfig[e.emotion].label,
       }));
@@ -284,8 +351,8 @@ export default function DashboardPage() {
     label?: string | number;
   }
 
-  // 연도별 툴팁 (타입 안전)
-  const YearlyTooltip: React.FC<CustomTooltipProps<YearlyPoint>> = ({
+  // 타임라인 툴팁 (타입 안전)
+  const TimelineTooltip: React.FC<CustomTooltipProps<TimelinePoint>> = ({
     active,
     payload,
     label,
@@ -296,16 +363,19 @@ export default function DashboardPage() {
 
     return (
       <div className="bg-white p-3 rounded-lg shadow-lg border">
-        <p className="font-semibold">{label}년</p>
+        <p className="font-semibold">{point.displayDate}</p>
         <p className="text-blue-600">{point.title}</p>
         <p>
           감정: {point.emotion} ({point.value}/5)
         </p>
+        {point.count > 1 && (
+          <p className="text-sm text-gray-600">총 {point.count}개 이벤트</p>
+        )}
       </div>
     );
   };
 
-  // Pie 라벨: Recharts가 콜백 파라미터 타입을 느슨하게 제공 → unknown으로 받고 우리 타입으로 안전 캐스팅
+  // Pie 라벨: Recharts가 콜백 파라미터 타입을 느슨하게 제공
   const renderPieLabel = (p: unknown) => {
     const payload = (p as { payload?: EmotionStat }).payload;
     if (!payload) return "";
@@ -342,8 +412,7 @@ export default function DashboardPage() {
                   감정 통계 대시보드
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  {userInfo.name || "사용자"}님의 인생 여정을 데이터로
-                  분석해보세요
+                  {userInfo.name || "사용자"}님의 인생 여정을 데이터로 분석해보세요
                 </p>
               </div>
             </div>
@@ -520,8 +589,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* 연도별 감정 추이 */}
-            {yearlyEmotions.length > 1 && (
+            {/* 시간별 감정 추이 */}
+            {timelineData.length > 1 && (
               <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <TrendingUp className="mr-2 h-5 w-5 text-green-600" />
@@ -529,17 +598,23 @@ export default function DashboardPage() {
                 </h3>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={yearlyEmotions}>
+                    <AreaChart data={timelineData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="year"
-                        type="number"
-                        scale="linear"
-                        domain={["dataMin", "dataMax"]}
-                        tickFormatter={(v: number) => String(v)}
+                      <XAxis 
+                        dataKey="dateKey"
+                        tickFormatter={(value: string) => {
+                          // 표시할 라벨을 간단히 변환
+                          if (value.includes('.')) {
+                            const parts = value.split('.');
+                            if (parts.length === 3) return `${parts[0]}.${parts[1]}.${parts[2]}`;
+                            if (parts.length === 2) return `${parts[0]}.${parts[1]}`;
+                          }
+                          return value;
+                        }}
+                        interval="preserveStartEnd"
                       />
                       <YAxis domain={[1, 5]} />
-                      <Tooltip content={<YearlyTooltip />} />
+                      <Tooltip content={<TimelineTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="value"
@@ -547,10 +622,13 @@ export default function DashboardPage() {
                         fill="#8B5CF6"
                         fillOpacity={0.3}
                         strokeWidth={3}
-                        isAnimationActive={false}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
+                </div>
+                <div className="mt-4 text-sm text-gray-600">
+                  <p>• 월/일 정보가 있는 경우 더 정확한 시간순으로 표시됩니다</p>
+                  <p>• 같은 시점에 여러 이벤트가 있을 경우 평균값으로 계산됩니다</p>
                 </div>
               </div>
             )}
@@ -566,7 +644,7 @@ export default function DashboardPage() {
                   {recentTrend.length > 0 ? (
                     recentTrend.map((trend, index) => (
                       <div
-                        key={`recent-${trend.year}-${index}`}
+                        key={`recent-${trend.displayDate}-${index}`}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="flex-1">
@@ -574,7 +652,7 @@ export default function DashboardPage() {
                             {trend.title}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {trend.year}년
+                            {trend.displayDate}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -643,6 +721,7 @@ export default function DashboardPage() {
                     <h4 className="font-semibold text-purple-800">미래 전망</h4>
                     <p className="text-purple-700 text-sm mt-1">
                       지금까지 {totalEvents}개의 소중한 순간들을 기록하셨네요.
+                      월/일까지 세세하게 기록된 추억들이 더욱 정확한 분석을 가능하게 합니다.
                       앞으로도 계속해서 의미있는 순간들을 기록하며 더 풍성한
                       인생을 만들어가세요.
                     </p>
@@ -661,7 +740,7 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-3 px-4 font-semibold text-gray-600">
-                        년도
+                        날짜
                       </th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-600">
                         이벤트
@@ -679,48 +758,65 @@ export default function DashboardPage() {
                   </thead>
                   <tbody>
                     {[...events]
-                      .sort((a, b) => b.year - a.year)
-                      .map((event) => (
-                        <tr
-                          key={event.id}
-                          className="border-b hover:bg-gray-50"
-                        >
-                          <td className="py-3 px-4 font-medium">
-                            {event.year}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-gray-900">
-                            {event.title}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center">
-                              {emotionConfig[event.emotion].emoji}{" "}
-                              {emotionConfig[event.emotion].label}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center">
-                              <div className="flex mr-2">
-                                {[...Array(5)].map((_, i) => (
-                                  <div
-                                    key={`row-dot-${event.id}-${i}`}
-                                    className={`w-3 h-3 rounded-full mr-1 ${
-                                      i < emotionConfig[event.emotion].value
-                                        ? "bg-purple-500"
-                                        : "bg-gray-200"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              <span className="text-sm text-gray-600">
-                                {emotionConfig[event.emotion].value}/5
+                      .sort((a, b) => {
+                        // 년도 > 월 > 일 순으로 최신 순 정렬
+                        if (a.year !== b.year) return b.year - a.year;
+                        const aMonth = a.month || 0;
+                        const bMonth = b.month || 0;
+                        if (aMonth !== bMonth) return bMonth - aMonth;
+                        const aDay = a.day || 0;
+                        const bDay = b.day || 0;
+                        return bDay - aDay;
+                      })
+                      .map((event) => {
+                        const displayDate = event.day && event.month 
+                          ? `${event.year}년 ${event.month}월 ${event.day}일`
+                          : event.month 
+                          ? `${event.year}년 ${event.month}월`
+                          : `${event.year}년`;
+
+                        return (
+                          <tr
+                            key={event.id}
+                            className="border-b hover:bg-gray-50"
+                          >
+                            <td className="py-3 px-4 font-medium">
+                              {displayDate}
+                            </td>
+                            <td className="py-3 px-4 font-medium text-gray-900">
+                              {event.title}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center">
+                                {emotionConfig[event.emotion].emoji}{" "}
+                                {emotionConfig[event.emotion].label}
                               </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-gray-600 text-sm max-w-xs truncate">
-                            {event.description}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center">
+                                <div className="flex mr-2">
+                                  {[...Array(5)].map((_, i) => (
+                                    <div
+                                      key={`row-dot-${event.id}-${i}`}
+                                      className={`w-3 h-3 rounded-full mr-1 ${
+                                        i < emotionConfig[event.emotion].value
+                                          ? "bg-purple-500"
+                                          : "bg-gray-200"
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm text-gray-600">
+                                  {emotionConfig[event.emotion].value}/5
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-gray-600 text-sm max-w-xs truncate">
+                              {event.description}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>

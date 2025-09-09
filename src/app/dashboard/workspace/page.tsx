@@ -1,4 +1,4 @@
-// app/dashboard/workspace/page.tsx
+// src/app/dashboard/workspace/page.tsx
 'use client';
 
 import {
@@ -13,112 +13,205 @@ import {
   Image as ImageIcon,
   Plus,
   Search,
-  Trash2
+  Trash2,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
+
+/* ========= Types ========= */
+type WorkStatus = 'DRAFT' | 'COMPLETED' | 'PUBLISHED';
+type SortKey = 'updatedAt' | 'createdAt' | 'title';
+type FilterStatus = 'all' | WorkStatus;
+
+type ServerPageType = 'TEXT' | 'IMAGE' | 'MIXED' | 'text' | 'image' | 'mixed';
+
+interface WorkPage {
+  id: string;
+  type: 'TEXT' | 'IMAGE' | 'MIXED';
+  order: number;
+}
+
+interface WorkCount {
+  pages: number;
+}
 
 interface Work {
   id: string;
   title: string;
-  status: 'DRAFT' | 'COMPLETED' | 'PUBLISHED';
+  status: WorkStatus;
   coverImage?: string;
   createdAt: string;
   updatedAt: string;
-  pages: Array<{
-    id: string;
-    type: 'TEXT' | 'IMAGE' | 'MIXED';
-    order: number;
-  }>;
-  _count: {
-    pages: number;
-  };
+  pages: WorkPage[];
+  _count: WorkCount;
 }
 
-const statusConfig = {
+/* 서버 응답 타입 (어댑터용) */
+interface ServerWork {
+  id: string;
+  title: string;
+  status?: string;
+  coverImage?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  pages?: Array<{
+    id?: string;
+    type?: ServerPageType;
+    contentType?: ServerPageType;
+    order?: number;
+    orderIndex?: number;
+  }>;
+  _count?: { pages?: number };
+}
+
+/* ========= Status Config ========= */
+const statusConfig: Record<
+  WorkStatus,
+  { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
+> = {
   DRAFT: { label: '작업중', color: 'bg-yellow-100 text-yellow-800', icon: Edit2 },
   COMPLETED: { label: '완료', color: 'bg-green-100 text-green-800', icon: FileText },
-  PUBLISHED: { label: '발행됨', color: 'bg-blue-100 text-blue-800', icon: Eye }
+  PUBLISHED: { label: '발행됨', color: 'bg-blue-100 text-blue-800', icon: Eye },
 };
+
+/* ========= Helpers ========= */
+const pageTypeAdapter = (t?: ServerPageType): WorkPage['type'] => {
+  const up = (t ?? '').toString().toUpperCase();
+  if (up === 'IMAGE') return 'IMAGE';
+  if (up === 'MIXED') return 'MIXED';
+  return 'TEXT';
+};
+
+const statusAdapter = (s?: string): WorkStatus => {
+  const up = (s ?? '').toUpperCase();
+  if (up === 'COMPLETED') return 'COMPLETED';
+  if (up === 'PUBLISHED') return 'PUBLISHED';
+  return 'DRAFT';
+};
+
+const toIsoStringOrNow = (v?: string) => (v ? v : new Date().toISOString());
+
+const adaptServerWork = (w: ServerWork): Work => {
+  const pagesRaw = w.pages ?? [];
+  const pages: Work['pages'] = pagesRaw
+    .map((p, i) => ({
+      id: p.id ?? `page_${w.id}_${i}`,
+      type: pageTypeAdapter(p.type ?? p.contentType),
+      order: typeof p.order === 'number' ? p.order : typeof p.orderIndex === 'number' ? p.orderIndex : i,
+    }))
+    .sort((a, b) => a.order - b.order);
+
+  const count = w._count?.pages ?? pages.length;
+
+  return {
+    id: w.id,
+    title: w.title ?? '',
+    status: statusAdapter(w.status),
+    coverImage: w.coverImage,
+    createdAt: toIsoStringOrNow(w.createdAt),
+    updatedAt: toIsoStringOrNow(w.updatedAt),
+    pages,
+    _count: { pages: count },
+  };
+};
+
+/* ========= API ========= */
+async function fetchWorksFromServer(status?: WorkStatus): Promise<Work[]> {
+  const url = new URL('/api/works', window.location.origin);
+  if (status) url.searchParams.set('status', status);
+  const res = await fetch(url.toString(), { cache: 'no-store' });
+  if (!res.ok) {
+    let msg = 'Failed to load works';
+    try {
+      const j = (await res.json()) as { error?: string };
+      if (j?.error) msg = j.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(msg);
+  }
+  const data = (await res.json()) as ServerWork[];
+  return data.map(adaptServerWork);
+}
 
 export default function WorkspacePage() {
   const [works, setWorks] = useState<Work[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'updatedAt' | 'createdAt' | 'title'>('updatedAt');
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
+  const [sortBy, setSortBy] = useState<SortKey>('updatedAt');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadWorks();
+    let cancelled = false;
+    async function load() {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const list = await fetchWorksFromServer();
+        if (!cancelled) setWorks(list);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : '작업 목록을 불러오는 중 오류가 발생했습니다.');
+          setWorks([]);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const loadWorks = async () => {
-  try {
-    const response = await fetch('/api/works?status=DRAFT');
-    if (response.ok) {
-      const data = await response.json();
-      setWorks(data);
-    } else {
-      // console.error 대신 상태로 관리
-      console.warn('Failed to load works:', response.status);
-    }
-  } catch (error) {
-    // 더 구체적인 에러 처리
-    if (error instanceof Error) {
-      console.warn('Error loading works:', error.message);
-    } else {
-      console.warn('Unknown error loading works');
-    }
-  } finally {
-    setIsLoading(false);
-  }
-};
+  const filteredWorks = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return works.filter((w) => {
+      const matchesSearch = q.length === 0 || w.title.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'all' ? true : w.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [works, searchQuery, statusFilter]);
+
+  const sortedWorks = useMemo(() => {
+    const arr = [...filteredWorks];
+    arr.sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'createdAt':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'updatedAt':
+        default:
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
+    });
+    return arr;
+  }, [filteredWorks, sortBy]);
 
   const deleteWork = async (workId: string) => {
-    if (!confirm('이 작품을 삭제하시겠습니까? 삭제된 작품은 복구할 수 없습니다.')) {
-      return;
-    }
-
+    const ok = window.confirm('이 작품을 삭제하시겠습니까? 삭제된 작품은 복구할 수 없습니다.');
+    if (!ok) return;
     try {
-      const response = await fetch(`/api/works/${workId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setWorks(prev => prev.filter(w => w.id !== workId));
-      } else {
+      const res = await fetch(`/api/works/${workId}`, { method: 'DELETE' });
+      if (!res.ok) {
         alert('작품 삭제 중 오류가 발생했습니다.');
+        return;
       }
-    } catch (error) {
-      console.error('Delete work error:', error);
+      setWorks((prev) => prev.filter((w) => w.id !== workId));
+    } catch (e) {
+      console.error('Delete work error:', e);
       alert('작품 삭제 중 오류가 발생했습니다.');
     }
   };
-
-  const filteredWorks = works.filter(work => {
-    const matchesSearch = work.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || work.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const sortedWorks = [...filteredWorks].sort((a, b) => {
-    switch (sortBy) {
-      case 'title':
-        return a.title.localeCompare(b.title);
-      case 'createdAt':
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      case 'updatedAt':
-      default:
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    }
-  });
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4" />
           <p className="text-gray-600">작업실을 불러오는 중...</p>
         </div>
       </div>
@@ -138,7 +231,7 @@ export default function WorkspacePage() {
               </h1>
               <p className="text-gray-600 mt-2">작업중인 작품들을 관리하세요</p>
             </div>
-            
+
             <Link
               href="/dashboard/create-work"
               className="flex items-center px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 shadow-lg transition-all hover:shadow-xl"
@@ -151,12 +244,19 @@ export default function WorkspacePage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Load error */}
+        {loadError && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
+
         {/* Search and Filter Bar */}
         <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="작품 제목으로 검색..."
@@ -171,7 +271,7 @@ export default function WorkspacePage() {
               <Filter className="h-5 w-5 text-gray-400" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => setStatusFilter(e.target.value as FilterStatus)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               >
                 <option value="all">모든 상태</option>
@@ -184,7 +284,7 @@ export default function WorkspacePage() {
             {/* Sort */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'updatedAt' | 'createdAt' | 'title')}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="updatedAt">최근 수정순</option>
@@ -200,9 +300,7 @@ export default function WorkspacePage() {
             {works.length === 0 ? (
               <>
                 <Briefcase className="mx-auto h-20 w-20 text-gray-300 mb-6" />
-                <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                  아직 작업중인 작품이 없습니다
-                </h3>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-4">아직 작업중인 작품이 없습니다</h3>
                 <p className="text-gray-600 mb-8 max-w-md mx-auto">
                   첫 번째 작품을 만들어서 나만의 디지털 노트를 시작해보세요
                 </p>
@@ -217,23 +315,15 @@ export default function WorkspacePage() {
             ) : (
               <>
                 <Search className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  검색 결과가 없습니다
-                </h3>
-                <p className="text-gray-600">
-                  다른 검색어나 필터를 시도해보세요
-                </p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">검색 결과가 없습니다</h3>
+                <p className="text-gray-600">다른 검색어나 필터를 시도해보세요</p>
               </>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {sortedWorks.map((work) => (
-              <WorkCard
-                key={work.id}
-                work={work}
-                onDelete={() => deleteWork(work.id)}
-              />
+              <WorkCard key={work.id} work={work} onDelete={() => void deleteWork(work.id)} />
             ))}
           </div>
         )}
@@ -249,19 +339,19 @@ export default function WorkspacePage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">
-                  {works.filter(w => w.status === 'DRAFT').length}
+                  {works.filter((w) => w.status === 'DRAFT').length}
                 </div>
                 <div className="text-sm text-gray-600">작업중</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {works.filter(w => w.status === 'COMPLETED').length}
+                  {works.filter((w) => w.status === 'COMPLETED').length}
                 </div>
                 <div className="text-sm text-gray-600">완료됨</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  {works.reduce((sum, w) => sum + w._count.pages, 0)}
+                  {works.reduce((sum, w) => sum + (w._count.pages ?? 0), 0)}
                 </div>
                 <div className="text-sm text-gray-600">총 페이지</div>
               </div>
@@ -273,7 +363,7 @@ export default function WorkspacePage() {
   );
 }
 
-// Work Card Component
+/* ========= Work Card ========= */
 interface WorkCardProps {
   work: Work;
   onDelete: () => void;
@@ -285,14 +375,10 @@ function WorkCard({ work, onDelete }: WorkCardProps) {
 
   return (
     <div className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100">
-      {/* Cover Image */}
+      {/* Cover */}
       <div className="aspect-[4/3] bg-gradient-to-br from-orange-100 to-amber-100 relative overflow-hidden">
         {work.coverImage ? (
-          <img
-            src={work.coverImage}
-            alt={work.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={work.coverImage} alt={work.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div className="text-center">
@@ -309,14 +395,14 @@ function WorkCard({ work, onDelete }: WorkCardProps) {
             </div>
           </div>
         )}
-        
+
         {/* Status Badge */}
         <div className={`absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium ${statusInfo.color}`}>
           <StatusIcon className="inline mr-1 h-3 w-3" />
           {statusInfo.label}
         </div>
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="flex space-x-1">
             <Link
@@ -345,7 +431,7 @@ function WorkCard({ work, onDelete }: WorkCardProps) {
         <h3 className="font-semibold text-gray-900 mb-2 truncate" title={work.title}>
           {work.title}
         </h3>
-        
+
         <div className="flex items-center text-sm text-gray-500 mb-3">
           <FileText className="mr-1 h-4 w-4" />
           <span>{work._count.pages}개 페이지</span>
