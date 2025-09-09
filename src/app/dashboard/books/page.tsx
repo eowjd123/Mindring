@@ -539,13 +539,13 @@ function BookCard({ book, onSelect, onDownload, onShare }: BookCardProps) {
 
         {/* Action Buttons */}
         <div className="space-y-2">
-          {/* <button
+          <button
             onClick={onSelect}
             className="w-full flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
             <Eye className="mr-2 h-4 w-4" />
             읽기
-          </button> */}
+          </button>
 
           <div className="grid grid-cols-2 gap-2">
             <div className="relative group">
