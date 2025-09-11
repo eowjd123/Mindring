@@ -64,8 +64,10 @@ import { toast } from 'sonner';
 /* =====================
  * Types
  * ===================== */
+type PageKind = 'text' | 'image' | 'mixed';
+
 interface PageContent {
-  type: 'text' | 'image' | 'mixed';
+  type: PageKind;
   text?: string;
   imageUrl?: string;
   fontSize?: number;
@@ -75,12 +77,14 @@ interface PageContent {
   textAlign?: 'left' | 'center' | 'right';
   imagePosition?: 'top' | 'bottom' | 'left' | 'right';
   imageSize?: 'small' | 'medium' | 'large' | 'full';
+  /** 캔버스 방향: 세로(기본) | 가로 */
+  orientation?: 'portrait' | 'landscape';
 }
 
 interface Page {
   id: string;
   orderIndex: number;
-  contentType: 'text' | 'image' | 'mixed';
+  contentType: PageKind;
   contentJson: PageContent;
 }
 
@@ -121,7 +125,7 @@ const workAPI = {
   async getById(id: string): Promise<ServerWorkResponse> {
     const res = await fetch(`/api/works/${id}`, { cache: 'no-store' });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({} as { error?: string }));
       throw new Error((err as { error?: string })?.error || 'Failed to load work');
     }
     return res.json();
@@ -138,7 +142,7 @@ const workAPI = {
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({} as { error?: string }));
       throw new Error((err as { error?: string })?.error || 'Failed to create work');
     }
     return res.json();
@@ -156,7 +160,7 @@ const workAPI = {
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({} as { error?: string }));
       throw new Error((err as { error?: string })?.error || 'Failed to update work');
     }
     return res.json();
@@ -296,7 +300,7 @@ const SaveDialog: React.FC<SaveDialogProps> = ({
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result;
@@ -430,36 +434,46 @@ const PreviewDialog: React.FC<PreviewDialogProps> = ({ isOpen, onClose, pages, t
   }, []);
 
   const currentPage = pages[currentIndex];
+  const pOri: 'portrait' | 'landscape' =
+    currentPage?.contentJson.orientation ?? 'portrait';
+  const previewWidth = pOri === 'landscape' ? 880 : 640;
+  const previewAspect = pOri === 'landscape' ? 4 / 3 : 3 / 4; // 숫자로!
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-lg p-4">
           {currentPage ? (
-            <div className="w-full max-w-2xl bg-white rounded-lg shadow-sm p-6">
-              {currentPage.contentJson.imageUrl && (
-                <div className="mb-4">
-                  <img src={currentPage.contentJson.imageUrl} alt="" className="w-full h-auto rounded" />
-                </div>
-              )}
-              {currentPage.contentJson.text && (
-                <div
-                  className="prose"
-                  style={{
-                    fontSize: `${currentPage.contentJson.fontSize || 16}px`,
-                    fontFamily: currentPage.contentJson.fontFamily || 'inherit',
-                    fontWeight: currentPage.contentJson.fontWeight || 'normal',
-                    color: currentPage.contentJson.color || 'inherit',
-                    textAlign: currentPage.contentJson.textAlign || 'left',
-                  }}
-                >
-                  {currentPage.contentJson.text}
-                </div>
-              )}
+            <div
+              key={`${currentPage.id}-${pOri}`} // 방향 바뀌면 강제 리마운트
+              className="relative bg-white border rounded-lg shadow overflow-hidden"
+              style={{ width: previewWidth, maxWidth: '100%', aspectRatio: previewAspect }}
+            >
+              <div className="absolute inset-0 overflow-auto p-6">
+                {currentPage.contentJson.imageUrl && (
+                  <div className="mb-4">
+                    <img src={currentPage.contentJson.imageUrl} alt="" className="w-full h-auto rounded" />
+                  </div>
+                )}
+                {currentPage.contentJson.text && (
+                  <div
+                    style={{
+                      fontSize: `${currentPage.contentJson.fontSize || 16}px`,
+                      fontFamily: currentPage.contentJson.fontFamily || 'inherit',
+                      fontWeight: currentPage.contentJson.fontWeight || 'normal',
+                      color: currentPage.contentJson.color || 'inherit',
+                      textAlign: currentPage.contentJson.textAlign || 'left',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {currentPage.contentJson.text}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="text-center text-gray-500">페이지가 없습니다</div>
@@ -476,8 +490,8 @@ const PreviewDialog: React.FC<PreviewDialogProps> = ({ isOpen, onClose, pages, t
           <Button variant="outline" size="sm" onClick={nextPage}>
             <SkipForward className="w-4 h-4" />
           </Button>
-          <Select 
-            value={String(intervalSeconds)} 
+          <Select
+            value={String(intervalSeconds)}
             onValueChange={(v) => setIntervalSeconds(Number(v))}
           >
             <SelectTrigger className="w-20">
@@ -532,13 +546,12 @@ export default function CreateWorkPage() {
   // Initialize work data
   useEffect(() => {
     let cancelled = false;
-    
+
     async function initializeWork() {
       setIsBootLoading(true);
       try {
         if (workIdFromQuery) {
           const serverWork = await workAPI.getById(workIdFromQuery);
-
           if (cancelled) return;
 
           setCurrentWorkId(serverWork.id);
@@ -548,14 +561,23 @@ export default function CreateWorkPage() {
 
           const adaptedPages: Page[] = (serverWork.pages || []).map((p, i) => {
             const contentType = serverPageTypeToClient(p.contentType || p.type);
+
+            // 안전 병합: 중복 키(type) 사전 제거
+            const raw = (p.contentJson || p.content || {}) as Partial<PageContent>;
+            const { type: _ignoreType, ...rest } = raw;
+
             const contentJson: PageContent = {
-              type: contentType,
+              // 기본값
               text: contentType === 'image' ? undefined : '',
               imageSize: 'medium',
               imagePosition: 'top',
-              ...(p.contentJson || p.content || {}),
+              // 서버값
+              ...rest,
+              // 최종 확정 키들
+              type: contentType,
+              orientation: (rest.orientation as 'portrait' | 'landscape') ?? 'portrait',
             };
-            
+
             return {
               id: p.id || `page_${Date.now()}_${i}`,
               orderIndex: p.orderIndex ?? p.order ?? i,
@@ -563,7 +585,7 @@ export default function CreateWorkPage() {
               contentJson,
             };
           });
-          
+
           adaptedPages.sort((a, b) => a.orderIndex - b.orderIndex);
           setPages(adaptedPages);
           setSelectedPageId(adaptedPages[0]?.id ?? null);
@@ -591,7 +613,7 @@ export default function CreateWorkPage() {
   }, [workIdFromQuery]);
 
   // Page management functions
-  const addPage = useCallback((type: 'text' | 'image' | 'mixed' = 'mixed') => {
+  const addPage = useCallback((type: PageKind = 'mixed') => {
     const newPage: Page = {
       id: `page_${Date.now()}`,
       orderIndex: pages.length,
@@ -606,6 +628,7 @@ export default function CreateWorkPage() {
         textAlign: 'left',
         imageSize: 'medium',
         imagePosition: 'top',
+        orientation: 'portrait', // 기본은 세로
       },
     };
     setPages((prev) => [...prev, newPage]);
@@ -626,7 +649,7 @@ export default function CreateWorkPage() {
   const duplicatePage = useCallback((pageId: string) => {
     const original = pages.find((p) => p.id === pageId);
     if (!original) return;
-    
+
     const cloned: Page = {
       ...original,
       id: `page_${Date.now()}`,
@@ -638,10 +661,10 @@ export default function CreateWorkPage() {
   const movePage = useCallback((pageId: string, direction: 'up' | 'down') => {
     const currentIndex = pages.findIndex((p) => p.id === pageId);
     if (currentIndex < 0) return;
-    
+
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= pages.length) return;
-    
+
     const newPages = [...pages];
     [newPages[currentIndex], newPages[targetIndex]] = [newPages[targetIndex], newPages[currentIndex]];
     newPages.forEach((p, i) => (p.orderIndex = i));
@@ -660,7 +683,7 @@ export default function CreateWorkPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedPageId) return;
-    
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result;
@@ -685,66 +708,61 @@ export default function CreateWorkPage() {
   };
 
   // Save functionality
-  // Save functionality
-const handleSave = async (workTitle: string, workCoverImage: string, status: ClientStatus) => {
-  setIsLoading(true);
-  try {
-    const payload = {
-      title: workTitle,
-      coverImage: workCoverImage || undefined,
-      pages: pages.map((p) => ({
-        type: p.contentType,
-        content: p.contentJson,
-      })),
-      status: clientStatusToServer(status),
-    };
+  const handleSave = async (workTitle: string, workCoverImage: string, status: ClientStatus) => {
+    setIsLoading(true);
+    try {
+      const payload = {
+        title: workTitle,
+        coverImage: workCoverImage || undefined,
+        pages: pages.map((p) => ({
+          type: p.contentType,
+          content: p.contentJson,
+        })),
+        status: clientStatusToServer(status),
+      };
 
-    let savedWork: Work;
-    if (currentWorkId) {
-      savedWork = await workAPI.update({ id: currentWorkId, ...payload });
-      toast.success('작품이 업데이트되었습니다');
-    } else {
-      savedWork = await workAPI.create(payload);
-      setCurrentWorkId(savedWork.id);
-      toast.success('작품이 저장되었습니다');
+      let savedWork: Work;
+      if (currentWorkId) {
+        savedWork = await workAPI.update({ id: currentWorkId, ...payload });
+        toast.success('작품이 업데이트되었습니다');
+      } else {
+        savedWork = await workAPI.create(payload);
+        setCurrentWorkId(savedWork.id);
+        toast.success('작품이 저장되었습니다');
+      }
+
+      setTitle(savedWork.title);
+      setCoverImage(savedWork.coverImage || '');
+      setIsSaveDialogOpen(false);
+
+      if (status === 'completed') {
+        router.push('/dashboard/books');
+      } else {
+        router.push('/dashboard/workspace');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error(error instanceof Error ? error.message : '저장에 실패했습니다');
+    } finally {
+      setIsLoading(false);
     }
-
-    setTitle(savedWork.title);
-    setCoverImage(savedWork.coverImage || '');
-    setIsSaveDialogOpen(false);
-
-    // ✅ 상태에 따라 이동 경로 분기
-    if (status === 'completed') {
-      router.push('/dashboard/books');         // 완성 ⇒ 만든 북 보기
-    } else {
-      router.push('/dashboard/workspace');     // 임시저장 ⇒ 워크스페이스
-      // 필요하다면 특정 작업으로 이동하고 싶을 때:
-      // router.push(`/dashboard/workspace?id=${savedWork.id}`);
-    }
-  } catch (error) {
-    console.error('Save error:', error);
-    toast.error(error instanceof Error ? error.message : '저장에 실패했습니다');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   // Auto-save functionality
   const autoSave = useCallback(async () => {
     if (pages.length === 0 || !title.trim()) return;
-    
+
     try {
       const payload = {
         title: title || '제목 없는 작품',
         coverImage: coverImage || undefined,
-        pages: pages.map((p) => ({ 
-          type: p.contentType, 
-          content: p.contentJson 
+        pages: pages.map((p) => ({
+          type: p.contentType,
+          content: p.contentJson,
         })),
         status: 'draft',
       };
-      
+
       if (currentWorkId) {
         await workAPI.update({ id: currentWorkId, ...payload });
       } else {
@@ -765,7 +783,7 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
   const handleExportPDF = () => toast.info('PDF 내보내기 기능이 곧 지원됩니다');
   const handleShare = () => toast.info('공유 기능이 곧 지원됩니다');
 
-  const selectedPage = selectedPageId ? pages.find((p) => p.id === selectedPageId) : null;
+  const selectedPage = selectedPageId ? pages.find((p) => p.id === selectedPageId) ?? null : null;
 
   if (isBootLoading) {
     return (
@@ -777,6 +795,9 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
       </div>
     );
   }
+
+  const headerOrientation: 'portrait' | 'landscape' =
+    selectedPage?.contentJson.orientation ?? 'portrait';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -791,7 +812,30 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
             <h1 className="text-xl font-semibold">작품 만들기</h1>
             {currentWorkId && <Badge variant="secondary">자동저장됨</Badge>}
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-3">
+            {/* 캔버스 방향 (헤더) */}
+                        <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">캔버스 방향</span>
+              <Select
+                value={headerOrientation}
+                onValueChange={(value: string) => {
+                  if (!selectedPage) return;
+                  const orientation = value as 'portrait' | 'landscape';
+                  updatePageContent(selectedPage.id, { orientation });
+                }}
+                disabled={!selectedPage}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="세로/가로" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="portrait">세로 (Portrait)</SelectItem>
+                  <SelectItem value="landscape">가로 (Landscape)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -871,90 +915,104 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {pages.map((page, index) => (
-              <Card
-                key={page.id}
-                className={`cursor-pointer transition-colors ${
-                  selectedPageId === page.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
-                }`}
-                onClick={() => setSelectedPageId(page.id)}
-              >
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">페이지 {index + 1}</span>
-                    <div className="flex items-center gap-1">
+            {pages.map((page, index) => {
+              const thumbOri: 'portrait' | 'landscape' = page.contentJson.orientation ?? 'portrait';
+              const thumbAspect = thumbOri === 'landscape' ? 4 / 3 : 3 / 4; // 숫자로!
+
+              return (
+                <Card
+                  key={page.id}
+                  className={`cursor-pointer transition-colors ${
+                    selectedPageId === page.id ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => setSelectedPageId(page.id)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">페이지 {index + 1}</span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            movePage(page.id, 'up');
+                          }}
+                          disabled={index === 0}
+                          className="h-6 w-6 p-0"
+                          aria-label="move-up"
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            movePage(page.id, 'down');
+                          }}
+                          disabled={index === pages.length - 1}
+                          className="h-6 w-6 p-0"
+                          aria-label="move-down"
+                        >
+                          ↓
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500 mb-2">
+                      {page.contentType === 'text' && '텍스트'}
+                      {page.contentType === 'image' && '이미지'}
+                      {page.contentType === 'mixed' && '텍스트+이미지'}
+                      <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">
+                        {thumbOri === 'landscape' ? '가로' : '세로'}
+                      </span>
+                    </div>
+
+                    {/* 썸네일 */}
+                    <div
+                      className="w-full bg-gray-100 rounded border overflow-hidden"
+                      style={{ aspectRatio: thumbAspect }}
+                    >
+                      {page.contentJson.imageUrl ? (
+                        <img src={page.contentJson.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
+                          {page.contentType === 'image' ? '이미지' : '미리보기'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 하단 액션 */}
+                    <div className="flex items-center gap-1 mt-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          movePage(page.id, 'up');
+                          duplicatePage(page.id);
                         }}
-                        disabled={index === 0}
-                        className="h-6 w-6 p-0"
+                        className="h-6 px-2 text-xs"
                       >
-                        ↑
+                        <Copy className="w-3 h-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          movePage(page.id, 'down');
+                          setPageToDelete(page.id);
+                          setShowDeleteConfirm(true);
                         }}
-                        disabled={index === pages.length - 1}
-                        className="h-6 w-6 p-0"
+                        className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
                       >
-                        ↓
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="text-xs text-gray-500 mb-2">
-                    {page.contentType === 'text' && '텍스트'}
-                    {page.contentType === 'image' && '이미지'}
-                    {page.contentType === 'mixed' && '텍스트+이미지'}
-                  </div>
-
-                  <div className="space-y-2">
-                    {page.contentJson.imageUrl && (
-                      <div className="w-full h-16 bg-gray-100 rounded border overflow-hidden">
-                        <img src={page.contentJson.imageUrl} alt="" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    {page.contentJson.text && (
-                      <div className="text-xs text-gray-600 line-clamp-2">{page.contentJson.text}</div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 mt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        duplicatePage(page.id);
-                      }}
-                      className="h-6 px-2 text-xs"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPageToDelete(page.id);
-                        setShowDeleteConfirm(true);
-                      }}
-                      className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
 
@@ -982,7 +1040,7 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => startImageEdit(selectedPage.contentJson.imageUrl!)}
+                              onClick={() => startImageEdit(selectedPage.contentJson.imageUrl as string)}
                             >
                               <Edit className="w-4 h-4 mr-2" /> 편집
                             </Button>
@@ -1011,7 +1069,8 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
                     )}
                   </TabsContent>
 
-                  <TabsContent value="style" className="mt-4 space-y-4">
+                  <TabsContent value="style" className="mt-4 space-y-6">
+                    {/* 페이지 텍스트/이미지 스타일들 */}
                     {(selectedPage.contentType === 'text' || selectedPage.contentType === 'mixed') && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -1154,108 +1213,128 @@ const handleSave = async (workTitle: string, workCoverImage: string, status: Cli
                 </Tabs>
               </div>
 
-              {/* Preview Area */}
-              <div className="flex-1 p-6 overflow-auto">
-                <div className="max-w-2xl mx-auto">
-                  <Card className="min-h-[400px]">
-                    <CardContent className="p-8">
-                      {selectedPage.contentType === 'mixed' ? (
-                        <div
-                          className={`space-y-4 ${
-                            selectedPage.contentJson.imagePosition === 'left' ||
-                            selectedPage.contentJson.imagePosition === 'right'
-                              ? 'flex gap-4 items-start'
-                              : ''
-                          }`}
-                        >
-                          {selectedPage.contentJson.imageUrl && (
-                            <div
-                              className={`
-                                ${selectedPage.contentJson.imagePosition === 'top' ? 'order-1' : ''}
-                                ${selectedPage.contentJson.imagePosition === 'bottom' ? 'order-2' : ''}
-                                ${selectedPage.contentJson.imagePosition === 'left' ? 'order-1 flex-shrink-0' : ''}
-                                ${selectedPage.contentJson.imagePosition === 'right' ? 'order-2 flex-shrink-0' : ''}
-                                ${selectedPage.contentJson.imageSize === 'small' ? 'w-32 h-32' : ''}
-                                ${selectedPage.contentJson.imageSize === 'medium' ? 'w-48 h-48' : ''}
-                                ${selectedPage.contentJson.imageSize === 'large' ? 'w-64 h-64' : ''}
-                                ${selectedPage.contentJson.imageSize === 'full' ? 'w-full' : ''}
-                              `}
-                            >
-                              <img
-                                src={selectedPage.contentJson.imageUrl}
-                                alt=""
-                                className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => startImageEdit(selectedPage.contentJson.imageUrl!)}
-                              />
-                            </div>
-                          )}
+              {/* Canvas Area */}
+              {selectedPage && (() => {
+                const ori: 'portrait' | 'landscape' = selectedPage.contentJson.orientation ?? 'portrait';
+                const canvasWidth = ori === 'landscape' ? 1100 : 800;
+                const aspect = ori === 'landscape' ? 4 / 3 : 3 / 4; // 숫자로!
 
-                          {selectedPage.contentJson.text && (
-                            <div
-                              className={`
-                                ${selectedPage.contentJson.imagePosition === 'top' ? 'order-2' : ''}
-                                ${selectedPage.contentJson.imagePosition === 'bottom' ? 'order-1' : ''}
-                                ${selectedPage.contentJson.imagePosition === 'left' ? 'order-2 flex-1' : ''}
-                                ${selectedPage.contentJson.imagePosition === 'right' ? 'order-1 flex-1' : ''}
-                              `}
-                              style={{
-                                fontSize: `${selectedPage.contentJson.fontSize || 16}px`,
-                                fontFamily: selectedPage.contentJson.fontFamily || 'inherit',
-                                fontWeight: selectedPage.contentJson.fontWeight || 'normal',
-                                color: selectedPage.contentJson.color || 'inherit',
-                                textAlign: selectedPage.contentJson.textAlign || 'left',
-                                lineHeight: 1.6,
-                              }}
-                            >
-                              {selectedPage.contentJson.text}
-                            </div>
-                          )}
+                return (
+                  <div className="flex-1 p-6 overflow-auto">
+                    <div className="max-w-full mx-auto">
+                      <div
+                        key={`${selectedPage.id}-${ori}`} // 방향 변경 시 리마운트
+                        className="relative bg-white border rounded-xl shadow-sm overflow-hidden mx-auto"
+                        style={{ width: canvasWidth, maxWidth: '100%', aspectRatio: aspect }}
+                      >
+                        <div className="absolute inset-0">
+                          <Card className="h-full w-full bg-transparent border-0 shadow-none">
+                            <CardContent className="h-full w-full p-8 overflow-auto">
+                              {selectedPage.contentType === 'mixed' ? (
+                                <div
+                                  className={`space-y-4 ${
+                                    selectedPage.contentJson.imagePosition === 'left' ||
+                                    selectedPage.contentJson.imagePosition === 'right'
+                                      ? 'flex gap-4 items-start'
+                                      : ''
+                                  }`}
+                                >
+                                  {selectedPage.contentJson.imageUrl && (
+                                    <div
+                                      className={`
+                                        ${selectedPage.contentJson.imagePosition === 'top' ? 'order-1' : ''}
+                                        ${selectedPage.contentJson.imagePosition === 'bottom' ? 'order-2' : ''}
+                                        ${selectedPage.contentJson.imagePosition === 'left' ? 'order-1 flex-shrink-0' : ''}
+                                        ${selectedPage.contentJson.imagePosition === 'right' ? 'order-2 flex-shrink-0' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'small' ? 'w-32 h-32' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'medium' ? 'w-48 h-48' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'large' ? 'w-64 h-64' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'full' ? 'w-full' : ''}
+                                      `}
+                                    >
+                                      <img
+                                        src={selectedPage.contentJson.imageUrl}
+                                        alt=""
+                                        className="w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => startImageEdit(selectedPage.contentJson.imageUrl as string)}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {selectedPage.contentJson.text && (
+                                    <div
+                                      className={`
+                                        ${selectedPage.contentJson.imagePosition === 'top' ? 'order-2' : ''}
+                                        ${selectedPage.contentJson.imagePosition === 'bottom' ? 'order-1' : ''}
+                                        ${selectedPage.contentJson.imagePosition === 'left' ? 'order-2 flex-1' : ''}
+                                        ${selectedPage.contentJson.imagePosition === 'right' ? 'order-1 flex-1' : ''}
+                                      `}
+                                      style={{
+                                        fontSize: `${selectedPage.contentJson.fontSize || 16}px`,
+                                        fontFamily: selectedPage.contentJson.fontFamily || 'inherit',
+                                        fontWeight: selectedPage.contentJson.fontWeight || 'normal',
+                                        color: selectedPage.contentJson.color || 'inherit',
+                                        textAlign: selectedPage.contentJson.textAlign || 'left',
+                                        lineHeight: 1.6,
+                                      }}
+                                    >
+                                      {selectedPage.contentJson.text}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : selectedPage.contentType === 'image' ? (
+                                selectedPage.contentJson.imageUrl ? (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <img
+                                      src={selectedPage.contentJson.imageUrl}
+                                      alt=""
+                                      className={`
+                                        rounded cursor-pointer hover:opacity-80 transition-opacity
+                                        ${selectedPage.contentJson.imageSize === 'small' ? 'max-w-xs' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'medium' ? 'max-w-md' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'large' ? 'max-w-lg' : ''}
+                                        ${selectedPage.contentJson.imageSize === 'full' ? 'w-full' : ''}
+                                      `}
+                                      onClick={() => startImageEdit(selectedPage.contentJson.imageUrl as string)}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="h-full flex items-center justify-center text-gray-400">
+                                    <div className="text-center">
+                                      <ImageIcon className="w-16 h-16 mx-auto mb-4" />
+                                      <p>이미지를 추가해주세요</p>
+                                    </div>
+                                  </div>
+                                )
+                              ) : selectedPage.contentJson.text ? (
+                                <div
+                                  style={{
+                                    fontSize: `${selectedPage.contentJson.fontSize || 16}px`,
+                                    fontFamily: selectedPage.contentJson.fontFamily || 'inherit',
+                                    fontWeight: selectedPage.contentJson.fontWeight || 'normal',
+                                    color: selectedPage.contentJson.color || 'inherit',
+                                    textAlign: selectedPage.contentJson.textAlign || 'left',
+                                    lineHeight: 1.6,
+                                  }}
+                                >
+                                  {selectedPage.contentJson.text}
+                                </div>
+                              ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">
+                                  <div className="text-center">
+                                    <Type className="w-16 h-16 mx-auto mb-4" />
+                                    <p>텍스트를 입력해주세요</p>
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
                         </div>
-                      ) : selectedPage.contentType === 'image' ? (
-                        selectedPage.contentJson.imageUrl ? (
-                          <div className="text-center">
-                            <img
-                              src={selectedPage.contentJson.imageUrl}
-                              alt=""
-                              className={`
-                                mx-auto rounded cursor-pointer hover:opacity-80 transition-opacity
-                                ${selectedPage.contentJson.imageSize === 'small' ? 'max-w-xs' : ''}
-                                ${selectedPage.contentJson.imageSize === 'medium' ? 'max-w-md' : ''}
-                                ${selectedPage.contentJson.imageSize === 'large' ? 'max-w-lg' : ''}
-                                ${selectedPage.contentJson.imageSize === 'full' ? 'w-full' : ''}
-                              `}
-                              onClick={() => startImageEdit(selectedPage.contentJson.imageUrl!)}
-                            />
-                          </div>
-                        ) : (
-                          <div className="text-center text-gray-400 py-16">
-                            <ImageIcon className="w-16 h-16 mx-auto mb-4" />
-                            <p>이미지를 추가해주세요</p>
-                          </div>
-                        )
-                      ) : selectedPage.contentJson.text ? (
-                        <div
-                          style={{
-                            fontSize: `${selectedPage.contentJson.fontSize || 16}px`,
-                            fontFamily: selectedPage.contentJson.fontFamily || 'inherit',
-                            fontWeight: selectedPage.contentJson.fontWeight || 'normal',
-                            color: selectedPage.contentJson.color || 'inherit',
-                            textAlign: selectedPage.contentJson.textAlign || 'left',
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {selectedPage.contentJson.text}
-                        </div>
-                      ) : (
-                        <div className="text-center text-gray-400 py-16">
-                          <Type className="w-16 h-16 mx-auto mb-4" />
-                          <p>텍스트를 입력해주세요</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400">

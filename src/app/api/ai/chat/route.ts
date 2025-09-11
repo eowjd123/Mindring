@@ -5,9 +5,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getSessionUser } from '@/lib/session';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// ✅ Next 라우트 핸들러가 서버에서만 돌도록 명시
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const SYSTEM_PROMPT = `당신은 "디지털자서전 도우미"입니다. 사용자가 자서전이나 회고록을 작성하는 것을 도와주는 전문 AI 어시스턴트입니다.
 
@@ -25,111 +25,107 @@ const SYSTEM_PROMPT = `당신은 "디지털자서전 도우미"입니다. 사용
 
 항상 사용자의 소중한 기억과 경험을 존중하며, 그들의 이야기가 의미 있게 전달될 수 있도록 도움을 제공하세요.`;
 
+// ✅ 환경변수 가드(앞뒤 공백 제거 + 형식 확인)
+const apiKey = process.env.OPENAI_API_KEY?.trim();
+if (!apiKey || !apiKey.startsWith('sk-')) {
+  throw new Error('OPENAI_API_KEY is missing or invalid format.');
+}
+
+const openai = new OpenAI({ apiKey });
+
+function jsonError(message: string, status = 500) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // 기존 세션 시스템으로 인증 확인
+    // 인증 확인
     const user = await getSessionUser();
     if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return jsonError('Authentication required', 401);
     }
 
     const formData = await request.formData();
-    const message = formData.get('message') as string;
+    const message = (formData.get('message') ?? '') as string;
     const audioFile = formData.get('audioFile') as File | null;
 
-    let userContent = message || '';
+    // 입력 검증
+    if (!message.trim() && !audioFile) {
+      return jsonError('Message or audio file is required', 400);
+    }
 
-    // 음성 파일이 있는 경우 전사 처리
+    let userContent = message.trim();
+    let transcriptionText: string | null = null;
+
+    // ⚙️ 음성 파일이 있으면 Whisper 전사
     if (audioFile) {
       try {
-        console.log('Processing audio file:', audioFile.name, audioFile.type);
-        
-        // OpenAI Whisper API를 사용한 음성 전사
+        // OpenAI SDK v4는 Web File/Blob도 지원
         const transcription = await openai.audio.transcriptions.create({
           file: audioFile,
           model: 'whisper-1',
-          language: 'ko', // 한국어 지정
+          language: 'ko',
           response_format: 'text',
         });
 
-        if (transcription) {
-          userContent = `[음성 전사 내용]\n${transcription}\n\n${message}`.trim();
+        if (transcription && typeof transcription === 'string') {
+          transcriptionText = transcription;
+          userContent = [`[음성 전사 내용]`, transcription, message].filter(Boolean).join('\n\n').trim();
         } else {
-          userContent += '\n[음성 파일을 전사하지 못했습니다]';
+          userContent = `${message}\n\n[음성 파일을 전사하지 못했습니다]`.trim();
         }
-      } catch (error) {
-        console.error('Audio transcription error:', error);
-        userContent += '\n[음성 파일 처리 중 오류가 발생했습니다]';
+      } catch (err) {
+        console.error('Audio transcription error:', err);
+        userContent = `${message}\n\n[음성 파일 처리 중 오류가 발생했습니다]`.trim();
       }
     }
 
-    if (!userContent.trim()) {
-      return NextResponse.json(
-        { error: 'Message or audio file is required' },
-        { status: 400 }
-      );
-    }
-
-    // ChatGPT API 호출
+    // Chat Completion
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // 또는 'gpt-3.5-turbo'
+      model: 'gpt-4o-mini',
       messages: [
-        {
-          role: 'system',
-          content: SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: userContent,
-        },
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userContent || '사용자 입력이 비어 있습니다.' },
       ],
       temperature: 0.7,
       max_tokens: 1500,
     });
 
-    const response = completion.choices[0]?.message?.content || 
+    const responseText =
+      completion.choices?.[0]?.message?.content ??
       '죄송합니다. 응답을 생성하는 중 오류가 발생했습니다.';
 
     return NextResponse.json({
-      response,
-      transcription: audioFile ? userContent : null,
+      response: responseText,
+      transcription: transcriptionText,
     });
-
-  } catch (error) {
+  } catch (error: unknown) {
+    // 상세 에러 로깅
     console.error('AI Chat API Error:', error);
-    
-    // OpenAI API 에러 처리
-    if (error instanceof OpenAI.APIError) {
-      return NextResponse.json(
-        { error: `OpenAI API 오류: ${error.message}` },
-        { status: 500 }
-      );
-    }
 
-    return NextResponse.json(
-      { error: 'AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' },
-      { status: 500 }
-    );
+    // OpenAI API 401 등 공통 처리
+    const status =
+      typeof error === 'object' && error && 'status' in error && typeof (error as { status: number }).status === 'number'
+        ? (error as { status: number }).status
+        : 500;
+
+    const message =
+      typeof error === 'object' && error && 'message' in error && typeof (error as { message: string }).message === 'string'
+        ? (error as { message: string }).message
+        : 'AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+
+    return jsonError(message, status === 0 ? 500 : status);
   }
 }
 
-// GET 요청으로 챗봇 상태 확인
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await getSessionUser();
     if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return jsonError('Authentication required', 401);
     }
 
-    // OpenAI API 키 확인
-    const hasApiKey = !!process.env.OPENAI_API_KEY;
-    
+    const hasApiKey = Boolean(apiKey);
     return NextResponse.json({
       status: 'ready',
       hasApiKey,
@@ -141,9 +137,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('AI Chat Status Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to check AI service status' },
-      { status: 500 }
-    );
+    return jsonError('Failed to check AI service status', 500);
   }
 }

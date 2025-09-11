@@ -1,6 +1,6 @@
 // app/(public)/login/page.tsx
 
-import LoginForm from "./Loginform"; // <-- 파일명 대소문자 일치!
+import LoginForm from "./Loginform"; // 대소문자 일치!
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,41 +9,29 @@ export const metadata: Metadata = {
 };
 
 type SP = Record<string, string | string[] | undefined>;
-
-function firstString(v: string | string[] | undefined): string | undefined {
-  return Array.isArray(v) ? v[0] : v;
-}
+const firstString = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
 
 export default async function LoginPage({
   searchParams,
 }: {
-  // Next 타입 생성기와 호환: Promise 형태 유지
   searchParams?: Promise<SP>;
 }) {
-  // Promise 안전 해제 (+ undefined 대비)
   const sp = ((await searchParams) ?? {}) as SP;
-
-  const error = firstString(sp.error) ?? "";
+  const error = firstString(sp?.error) ?? "";
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center p-6">
-      {/* 배경 장식 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full blur-3xl opacity-30" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full blur-3xl opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full blur-3xl opacity-20" />
+    <main className="fixed inset-0 overflow-hidden bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 sm:p-6">
+      {/* 배경 장식 (작고 은은하게) */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-6 right-6 w-28 h-28 sm:w-32 sm:h-32 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full blur-xl sm:blur-2xl opacity-30" />
+        <div className="absolute bottom-6 left-6 w-28 h-28 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full blur-xl sm:blur-2xl opacity-30" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-36 h-36 sm:w-40 sm:h-40 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full blur-xl sm:blur-2xl opacity-20" />
       </div>
 
-      {/* 본문 */}
-      <div className="relative z-10 w-full max-w-md">
+      {/* 로그인 카드 */}
+      <div className="relative z-10 w-full max-w-sm">
         <LoginForm initialError={error} />
       </div>
-
-      {/* 떠있는 포인트들 */}
-      <div className="absolute top-10 left-10 w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
-      <div className="absolute top-1/4 right-10 w-1 h-1 bg-blue-400 rounded-full animate-ping" />
-      <div className="absolute bottom-1/4 left-1/4 w-3 h-3 bg-indigo-300 rounded-full animate-bounce" />
-      <div className="absolute bottom-10 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
     </main>
   );
 }

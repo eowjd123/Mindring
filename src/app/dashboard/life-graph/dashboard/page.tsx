@@ -2,6 +2,21 @@
 "use client";
 
 import {
+  Activity,
+  ArrowLeft,
+  Award,
+  BarChart3,
+  Brain,
+  Calendar,
+  Clock,
+  Heart,
+  PieChart,
+  Sparkles,
+  Star,
+  TrendingUp,
+  User,
+} from "lucide-react";
+import {
   Area,
   AreaChart,
   Bar,
@@ -15,17 +30,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  ArrowLeft,
-  BarChart3,
-  Brain,
-  Calendar,
-  Clock,
-  Heart,
-  PieChart,
-  TrendingUp,
-  User,
-} from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface LifeEvent {
@@ -64,13 +68,13 @@ type EmotionStat = {
 };
 
 type TimelinePoint = {
-  dateKey: string; // "2023" | "2023.03" | "2023.03.15"
-  displayDate: string; // "2023년" | "2023년 3월" | "2023년 3월 15일"
-  sortValue: number; // 정렬용 숫자값
-  value: number; // 1~5 평균
-  emotion: string; // 라벨 텍스트
-  title: string; // 대표 타이틀
-  count: number; // 해당 시점의 이벤트 개수
+  dateKey: string;
+  displayDate: string;
+  sortValue: number;
+  value: number;
+  emotion: string;
+  title: string;
+  count: number;
 };
 
 export default function DashboardPage() {
@@ -362,71 +366,79 @@ export default function DashboardPage() {
     if (!point) return null;
 
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border">
-        <p className="font-semibold">{point.displayDate}</p>
-        <p className="text-blue-600">{point.title}</p>
-        <p>
+      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-purple-100">
+        <p className="font-semibold text-gray-800">{point.displayDate}</p>
+        <p className="text-purple-600 font-medium">{point.title}</p>
+        <p className="text-sm text-gray-600">
           감정: {point.emotion} ({point.value}/5)
         </p>
         {point.count > 1 && (
-          <p className="text-sm text-gray-600">총 {point.count}개 이벤트</p>
+          <p className="text-sm text-gray-500">총 {point.count}개 이벤트</p>
         )}
       </div>
     );
   };
 
   // Pie 라벨: Recharts가 콜백 파라미터 타입을 느슨하게 제공
-  const renderPieLabel = (p: unknown) => {
-    const payload = (p as { payload?: EmotionStat }).payload;
+  const renderPieLabel = (entry: unknown) => {
+    const payload = (entry as { payload?: EmotionStat }).payload;
     if (!payload) return "";
     return `${payload.label} ${payload.percentage}%`;
   };
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">감정 통계를 분석하는 중...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto mb-6"></div>
+            <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-purple-600" />
+          </div>
+          <p className="text-gray-700 font-medium">감정 통계를 분석하는 중...</p>
+          <p className="text-gray-500 text-sm mt-2">잠시만 기다려주세요</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Header - Modern Glassmorphism */}
+      <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-white/20 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <button
                 onClick={handleGoBack}
-                className="mr-4 p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                className="mr-4 p-3 text-gray-600 hover:text-purple-600 rounded-xl hover:bg-purple-50 transition-all duration-200 group"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                  <BarChart3 className="mr-3 h-7 w-7 text-purple-600" />
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center">
+                  <BarChart3 className="mr-3 h-8 w-8 text-purple-600" />
                   감정 통계 대시보드
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-600 mt-2 font-medium">
                   {userInfo.name || "사용자"}님의 인생 여정을 데이터로 분석해보세요
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <div className="flex items-center">
-                <User className="mr-2 h-4 w-4" />
-                {userInfo.name || "사용자"} (
-                {currentAge > 0 ? `${currentAge}세` : "나이 미설정"})
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
+                <User className="mr-2 h-4 w-4 text-purple-600" />
+                <span className="font-medium">{userInfo.name || "사용자"}</span>
+                <span className="ml-2 text-gray-500">
+                  ({currentAge > 0 ? `${currentAge}세` : "나이 미설정"})
+                </span>
               </div>
-              <div className="flex items-center">
-                <Calendar className="mr-2 h-4 w-4" />
-                {userInfo.birthYear || "출생년도 미설정"}년생
+              <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
+                <Calendar className="mr-2 h-4 w-4 text-blue-600" />
+                <span className="font-medium">{userInfo.birthYear || "출생년도 미설정"}년생</span>
               </div>
-              <div>📍 {userInfo.location || "위치 미설정"}</div>
+              <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
+                <span>📍 {userInfo.location || "위치 미설정"}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -434,60 +446,69 @@ export default function DashboardPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {events.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <BarChart3 className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-12 text-center border border-white/20">
+            <div className="relative mb-6">
+              <BarChart3 className="mx-auto h-20 w-20 text-gray-300" />
+              <Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-purple-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">
               분석할 데이터가 없습니다
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-8 text-lg">
               먼저 인생그래프에서 추억을 추가해주세요
             </p>
             <button
               onClick={handleGoBack}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
             >
               인생그래프로 돌아가기
             </button>
           </div>
         ) : (
           <>
-            {/* 핵심 지표 */}
+            {/* 핵심 지표 - Enhanced Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <InfoCard
                 title="총 추억 개수"
                 value={`${totalEvents}개`}
                 desc="기록된 인생 이벤트"
-                icon={<Calendar className="h-6 w-6 text-blue-600" />}
-                iconBg="bg-blue-100"
+                icon={<Calendar className="h-6 w-6" />}
+                iconBg="from-blue-500 to-blue-600"
+                trend="+12%"
               />
               <InfoCard
                 title="평균 행복도"
                 value={`${averageHappiness}/5`}
                 desc="전체 기간 평균"
-                icon={<Heart className="h-6 w-6 text-green-600" />}
-                iconBg="bg-green-100"
+                icon={<Heart className="h-6 w-6" />}
+                iconBg="from-green-500 to-emerald-600"
+                trend="85%"
               />
               <InfoCard
                 title="긍정 비율"
                 value={`${happinessRate}%`}
                 desc="행복한 순간들"
-                icon={<TrendingUp className="h-6 w-6 text-yellow-600" />}
-                iconBg="bg-yellow-100"
+                icon={<TrendingUp className="h-6 w-6" />}
+                iconBg="from-yellow-500 to-orange-500"
+                trend="+8%"
               />
               <InfoCard
                 title="현재 나이"
                 value={currentAge > 0 ? `${currentAge}세` : "-"}
                 desc="계속되는 여정"
-                icon={<Clock className="h-6 w-6 text-purple-600" />}
-                iconBg="bg-purple-100"
+                icon={<Clock className="h-6 w-6" />}
+                iconBg="from-purple-500 to-purple-600"
+                trend="진행중"
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* 감정 분포 파이차트 */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <PieChart className="mr-2 h-5 w-5 text-purple-600" />
+              {/* 감정 분포 파이차트 - Enhanced */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg mr-3">
+                    <PieChart className="h-5 w-5 text-white" />
+                  </div>
                   감정별 분포
                 </h3>
                 {emotionStats.length > 0 ? (
@@ -515,23 +536,32 @@ export default function DashboardPage() {
                               `${value}개`,
                               "개수",
                             ]}
+                            contentStyle={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(8px)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '12px',
+                              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+                            }}
                           />
                         </RechartsPieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="mt-6 grid grid-cols-2 gap-4">
                       {emotionStats.map((stat) => (
                         <div
                           key={`legend-${stat.emotion}`}
-                          className="flex items-center space-x-2"
+                          className="flex items-center space-x-3 p-3 bg-gray-50/80 rounded-xl backdrop-blur-sm"
                         >
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-4 h-4 rounded-full shadow-sm"
                             style={{ backgroundColor: stat.color }}
                           />
-                          <span className="text-sm text-gray-600">
-                            {stat.emoji} {stat.label}: {stat.count}개 (
-                            {stat.percentage}%)
+                          <span className="text-sm font-medium text-gray-700">
+                            {stat.emoji} {stat.label}
+                          </span>
+                          <span className="text-sm text-gray-500 ml-auto">
+                            {stat.count}개 ({stat.percentage}%)
                           </span>
                         </div>
                       ))}
@@ -539,16 +569,18 @@ export default function DashboardPage() {
                   </>
                 ) : (
                   <EmptyChart
-                    icon={<PieChart className="mx-auto h-12 w-12 mb-4" />}
+                    icon={<PieChart className="mx-auto h-16 w-16 mb-4 text-gray-300" />}
                     text="분석할 데이터가 부족합니다"
                   />
                 )}
               </div>
 
-              {/* 10년대별 평균 행복도 */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <BarChart3 className="mr-2 h-5 w-5 text-blue-600" />
+              {/* 10년대별 평균 행복도 - Enhanced */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg mr-3">
+                    <BarChart3 className="h-5 w-5 text-white" />
+                  </div>
                   10년대별 평균 행복도
                 </h3>
                 {decadeData.length > 0 ? (
@@ -556,54 +588,71 @@ export default function DashboardPage() {
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={decadeData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="decade" />
-                          <YAxis domain={[1, 5]} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="decade" tick={{ fill: '#64748b' }} />
+                          <YAxis domain={[1, 5]} tick={{ fill: '#64748b' }} />
                           <Tooltip
                             formatter={(value: number) => [
                               `${value}/5`,
                               "평균 행복도",
                             ]}
+                            contentStyle={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(8px)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '12px',
+                              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+                            }}
                           />
                           <Bar
                             dataKey="average"
-                            fill="#3B82F6"
-                            radius={[4, 4, 0, 0]}
+                            fill="url(#blueGradient)"
+                            radius={[8, 8, 0, 0]}
                           />
+                          <defs>
+                            <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="#1E40AF" stopOpacity={0.7}/>
+                            </linearGradient>
+                          </defs>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="mt-4 text-sm text-gray-600">
-                      <p>
+                    <div className="mt-6 p-4 bg-blue-50/80 rounded-xl backdrop-blur-sm">
+                      <p className="text-sm text-blue-700 font-medium mb-2">📊 분석 인사이트</p>
+                      <p className="text-sm text-blue-600">
                         • 인생의 각 시기별 감정 상태를 한눈에 확인할 수 있습니다
                       </p>
-                      <p>• 5점 만점 기준으로 평균값을 계산했습니다</p>
+                      <p className="text-sm text-blue-600">
+                        • 5점 만점 기준으로 평균값을 계산했습니다
+                      </p>
                     </div>
                   </>
                 ) : (
                   <EmptyChart
-                    icon={<BarChart3 className="mx-auto h-12 w-12 mb-4" />}
+                    icon={<BarChart3 className="mx-auto h-16 w-16 mb-4 text-gray-300" />}
                     text="분석할 데이터가 부족합니다"
                   />
                 )}
               </div>
             </div>
 
-            {/* 시간별 감정 추이 */}
+            {/* 시간별 감정 추이 - Enhanced */}
             {timelineData.length > 1 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <TrendingUp className="mr-2 h-5 w-5 text-green-600" />
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 mb-8 border border-white/20">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg mr-3">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
                   인생 감정 추이 그래프
                 </h3>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis 
                         dataKey="dateKey"
                         tickFormatter={(value: string) => {
-                          // 표시할 라벨을 간단히 변환
                           if (value.includes('.')) {
                             const parts = value.split('.');
                             if (parts.length === 3) return `${parts[0]}.${parts[1]}.${parts[2]}`;
@@ -612,32 +661,45 @@ export default function DashboardPage() {
                           return value;
                         }}
                         interval="preserveStartEnd"
+                        tick={{ fill: '#64748b' }}
                       />
-                      <YAxis domain={[1, 5]} />
+                      <YAxis domain={[1, 5]} tick={{ fill: '#64748b' }} />
                       <Tooltip content={<TimelineTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="value"
                         stroke="#8B5CF6"
-                        fill="#8B5CF6"
-                        fillOpacity={0.3}
+                        fill="url(#purpleGradient)"
                         strokeWidth={3}
                       />
+                      <defs>
+                        <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.05}/>
+                        </linearGradient>
+                      </defs>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 text-sm text-gray-600">
-                  <p>• 월/일 정보가 있는 경우 더 정확한 시간순으로 표시됩니다</p>
-                  <p>• 같은 시점에 여러 이벤트가 있을 경우 평균값으로 계산됩니다</p>
+                <div className="mt-6 p-4 bg-purple-50/80 rounded-xl backdrop-blur-sm">
+                  <p className="text-sm text-purple-700 font-medium mb-2">💡 분석 노트</p>
+                  <p className="text-sm text-purple-600">
+                    • 월/일 정보가 있는 경우 더 정확한 시간순으로 표시됩니다
+                  </p>
+                  <p className="text-sm text-purple-600">
+                    • 같은 시점에 여러 이벤트가 있을 경우 평균값으로 계산됩니다
+                  </p>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* 최근 감정 트렌드 */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Clock className="mr-2 h-5 w-5 text-orange-600" />
+              {/* 최근 감정 트렌드 - Enhanced */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg mr-3">
+                    <Clock className="h-5 w-5 text-white" />
+                  </div>
                   최근 감정 트렌드
                 </h3>
                 <div className="space-y-4">
@@ -645,67 +707,79 @@ export default function DashboardPage() {
                     recentTrend.map((trend, index) => (
                       <div
                         key={`recent-${trend.displayDate}-${index}`}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        className="group flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-gray-100/80 rounded-xl hover:shadow-md transition-all duration-200 border border-gray-100/50"
                       >
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">
+                          <p className="font-semibold text-gray-800 group-hover:text-purple-600 transition-colors">
                             {trend.title}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-500 mt-1">
                             {trend.displayDate}
                           </p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-600">
-                            {trend.emotion}
-                          </span>
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <div
-                                key={`dot-${index}-${i}`}
-                                className={`w-2 h-2 rounded-full mr-1 ${
-                                  i < trend.value
-                                    ? "bg-purple-500"
-                                    : "bg-gray-200"
-                                }`}
-                              />
-                            ))}
+                        <div className="flex items-center space-x-3">
+                          <div className="text-center">
+                            <span className="text-sm font-medium text-gray-600 block">
+                              {trend.emotion}
+                            </span>
+                            <div className="flex mt-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={`star-${index}-${i}`}
+                                  className={`w-3 h-3 mx-0.5 ${
+                                    i < trend.value
+                                      ? "fill-purple-500 text-purple-500"
+                                      : "fill-gray-200 text-gray-200"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-2xl font-bold text-purple-600">
+                            {trend.value}
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <Clock className="mx-auto h-12 w-12 mb-4" />
-                      <p>최근 데이터가 없습니다</p>
+                    <div className="text-center py-12 text-gray-500">
+                      <Clock className="mx-auto h-16 w-16 mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">최근 데이터가 없습니다</p>
+                      <p className="text-sm mt-2">새로운 추억을 추가해보세요</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* AI 분석 및 조언 */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Brain className="mr-2 h-5 w-5 text-indigo-600" />
+              {/* AI 분석 및 조언 - Enhanced */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                  <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg mr-3">
+                    <Brain className="h-5 w-5 text-white" />
+                  </div>
                   AI 인사이트 & 조언
                 </h3>
                 <div className="space-y-4">
                   {happinessRate > 60 && (
-                    <div className="p-4 bg-green-50 rounded-lg border-l-4 border-green-400">
-                      <h4 className="font-semibold text-green-800">
-                        긍정적 패턴
-                      </h4>
-                      <p className="text-green-700 text-sm mt-1">
+                    <div className="p-5 bg-gradient-to-r from-green-50/80 to-emerald-50/80 rounded-xl border-l-4 border-green-400">
+                      <div className="flex items-center mb-2">
+                        <Award className="h-5 w-5 text-green-600 mr-2" />
+                        <h4 className="font-bold text-green-800">긍정적 패턴</h4>
+                      </div>
+                      <p className="text-green-700 text-sm leading-relaxed">
                         전체 추억의 {happinessRate}%가 긍정적인 감정을 담고
                         있습니다. 인생을 전반적으로 밝게 바라보는 시각을 가지고
-                        계시는군요!
+                        계시는군요! 🌟
                       </p>
                     </div>
                   )}
 
-                  <div className="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                    <h4 className="font-semibold text-blue-800">성장 포인트</h4>
-                    <p className="text-blue-700 text-sm mt-1">
+                  <div className="p-5 bg-gradient-to-r from-blue-50/80 to-cyan-50/80 rounded-xl border-l-4 border-blue-400">
+                    <div className="flex items-center mb-2">
+                      <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
+                      <h4 className="font-bold text-blue-800">성장 포인트</h4>
+                    </div>
+                    <p className="text-blue-700 text-sm leading-relaxed">
                       평균 행복도가 {averageHappiness}/5점으로
                       {averageHappiness >= 4
                         ? " 매우 높은"
@@ -713,45 +787,51 @@ export default function DashboardPage() {
                         ? " 균형잡힌"
                         : " 개선의 여지가 있는"}
                       수준입니다. 작은 일상의 행복들도 기록해보시면 더욱 풍성한
-                      인생 그래프가 될 것 같아요.
+                      인생 그래프가 될 것 같아요. 📈
                     </p>
                   </div>
 
-                  <div className="p-4 bg-purple-50 rounded-lg border-l-4 border-purple-400">
-                    <h4 className="font-semibold text-purple-800">미래 전망</h4>
-                    <p className="text-purple-700 text-sm mt-1">
+                  <div className="p-5 bg-gradient-to-r from-purple-50/80 to-pink-50/80 rounded-xl border-l-4 border-purple-400">
+                    <div className="flex items-center mb-2">
+                      <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
+                      <h4 className="font-bold text-purple-800">미래 전망</h4>
+                    </div>
+                    <p className="text-purple-700 text-sm leading-relaxed">
                       지금까지 {totalEvents}개의 소중한 순간들을 기록하셨네요.
                       월/일까지 세세하게 기록된 추억들이 더욱 정확한 분석을 가능하게 합니다.
                       앞으로도 계속해서 의미있는 순간들을 기록하며 더 풍성한
-                      인생을 만들어가세요.
+                      인생을 만들어가세요. ✨
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 상세 이벤트 목록 */}
-            <div className="bg-white rounded-xl shadow-sm p-6 mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            {/* 상세 이벤트 목록 - Enhanced */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 mt-8 border border-white/20">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <div className="p-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg mr-3">
+                  <Activity className="h-5 w-5 text-white" />
+                </div>
                 전체 인생 이벤트
               </h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-4 px-6 font-bold text-gray-700 bg-gray-50/80 rounded-tl-xl">
                         날짜
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">
+                      <th className="text-left py-4 px-6 font-bold text-gray-700 bg-gray-50/80">
                         이벤트
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">
+                      <th className="text-left py-4 px-6 font-bold text-gray-700 bg-gray-50/80">
                         감정
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">
+                      <th className="text-left py-4 px-6 font-bold text-gray-700 bg-gray-50/80">
                         행복도
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">
+                      <th className="text-left py-4 px-6 font-bold text-gray-700 bg-gray-50/80 rounded-tr-xl">
                         설명
                       </th>
                     </tr>
@@ -759,7 +839,6 @@ export default function DashboardPage() {
                   <tbody>
                     {[...events]
                       .sort((a, b) => {
-                        // 년도 > 월 > 일 순으로 최신 순 정렬
                         if (a.year !== b.year) return b.year - a.year;
                         const aMonth = a.month || 0;
                         const bMonth = b.month || 0;
@@ -768,7 +847,7 @@ export default function DashboardPage() {
                         const bDay = b.day || 0;
                         return bDay - aDay;
                       })
-                      .map((event) => {
+                      .map((event, index) => {
                         const displayDate = event.day && event.month 
                           ? `${event.year}년 ${event.month}월 ${event.day}일`
                           : event.month 
@@ -778,41 +857,50 @@ export default function DashboardPage() {
                         return (
                           <tr
                             key={event.id}
-                            className="border-b hover:bg-gray-50"
+                            className={`border-b border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-blue-50/50 transition-all duration-200 ${
+                              index === 0 ? 'bg-gradient-to-r from-yellow-50/30 to-orange-50/30' : ''
+                            }`}
                           >
-                            <td className="py-3 px-4 font-medium">
+                            <td className="py-4 px-6 font-medium text-gray-700">
                               {displayDate}
                             </td>
-                            <td className="py-3 px-4 font-medium text-gray-900">
+                            <td className="py-4 px-6 font-semibold text-gray-800">
                               {event.title}
+                              {index === 0 && (
+                                <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium">
+                                  최신
+                                </span>
+                              )}
                             </td>
-                            <td className="py-3 px-4">
-                              <span className="inline-flex items-center">
+                            <td className="py-4 px-6">
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100">
                                 {emotionConfig[event.emotion].emoji}{" "}
                                 {emotionConfig[event.emotion].label}
                               </span>
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="py-4 px-6">
                               <div className="flex items-center">
-                                <div className="flex mr-2">
+                                <div className="flex mr-3">
                                   {[...Array(5)].map((_, i) => (
-                                    <div
-                                      key={`row-dot-${event.id}-${i}`}
-                                      className={`w-3 h-3 rounded-full mr-1 ${
+                                    <Star
+                                      key={`table-star-${event.id}-${i}`}
+                                      className={`w-4 h-4 mx-0.5 ${
                                         i < emotionConfig[event.emotion].value
-                                          ? "bg-purple-500"
-                                          : "bg-gray-200"
+                                          ? "fill-purple-500 text-purple-500"
+                                          : "fill-gray-200 text-gray-200"
                                       }`}
                                     />
                                   ))}
                                 </div>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm font-semibold text-purple-600">
                                   {emotionConfig[event.emotion].value}/5
                                 </span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-600 text-sm max-w-xs truncate">
-                              {event.description}
+                            <td className="py-4 px-6 text-gray-600 text-sm max-w-xs">
+                              <div className="truncate" title={event.description}>
+                                {event.description}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -836,23 +924,36 @@ function InfoCard({
   desc,
   icon,
   iconBg,
+  trend,
 }: {
   title: string;
   value: string;
   desc: string;
   icon: React.ReactNode;
   iconBg: string;
+  trend?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
+    <div className="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-xs text-gray-500 mt-1">{desc}</p>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+            {title}
+          </p>
+          <p className="text-3xl font-bold text-gray-800 mt-2 group-hover:text-purple-600 transition-colors">
+            {value}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">{desc}</p>
+          {trend && (
+            <div className="mt-3">
+              <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                {trend}
+              </span>
+            </div>
+          )}
         </div>
         <div
-          className={`h-12 w-12 ${iconBg} rounded-lg flex items-center justify-center`}
+          className={`h-16 w-16 bg-gradient-to-r ${iconBg} rounded-xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}
         >
           {icon}
         </div>
@@ -866,7 +967,8 @@ function EmptyChart({ icon, text }: { icon: React.ReactNode; text: string }) {
     <div className="h-80 flex items-center justify-center text-gray-500">
       <div className="text-center">
         {icon}
-        <p>{text}</p>
+        <p className="font-medium">{text}</p>
+        <p className="text-sm mt-2 text-gray-400">데이터를 추가해보세요</p>
       </div>
     </div>
   );

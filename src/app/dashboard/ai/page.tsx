@@ -19,12 +19,12 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: string; // ISO string to avoid SSR/CSR mismatch
+  timestamp: string; // ISO string
   audioFile?: string;
 }
 
 export default function AIChatPage() {
-  // ✅ Hydration-safe: start with empty list and inject initial message on mount (client-only)
+  // 초기 메시지는 클라이언트 마운트 시 주입(Hydration-safe)
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +45,6 @@ export default function AIChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Inject initial assistant message on mount (client-only)
   useEffect(() => {
     setMessages([
       {
@@ -69,23 +68,20 @@ export default function AIChatPage() {
     const userMessage: Message = {
       id: makeId(),
       role: 'user',
-      content: inputText || `[음성 파일: ${selectedFile?.name}]`,
-      timestamp: nowISO(), // client-only timestamp
+      content: inputText || (selectedFile ? `[음성 파일: ${selectedFile.name}]` : ''),
+      timestamp: nowISO(),
       audioFile: selectedFile?.name,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputText('');
-    setSelectedFile(null);
     setError(null);
     setIsLoading(true);
 
     try {
       const formData = new FormData();
       formData.append('message', userMessage.content);
-      if (selectedFile) {
-        formData.append('audioFile', selectedFile);
-      }
+      if (selectedFile) formData.append('audioFile', selectedFile);
 
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -93,7 +89,13 @@ export default function AIChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // 서버에서 상세 메시지를 보내면 먼저 활용
+        const maybeJson = await response.json().catch(() => null as unknown);
+        const serverMsg =
+          (maybeJson && typeof maybeJson === 'object' && 'error' in maybeJson
+            ? (maybeJson as { error: string }).error
+            : '') || `HTTP error! status: ${response.status}`;
+        throw new Error(serverMsg);
       }
 
       const data: { response: string; transcription?: string | null } =
@@ -103,30 +105,39 @@ export default function AIChatPage() {
         id: makeId(),
         role: 'assistant',
         content: data.response,
-        timestamp: nowISO(), // render-safe
+        timestamp: nowISO(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.error('Error sending message:', err);
-      setError('메시지 전송 중 오류가 발생했습니다. 다시 시도해주세요.');
+
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : '메시지 전송 중 오류가 발생했습니다. 다시 시도해주세요.';
+
+      setError(errMsg);
 
       const errorMessage: Message = {
         id: makeId(),
         role: 'assistant',
         content:
-          '죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          errMsg.includes('Authentication required') || errMsg.includes('401')
+            ? '로그인이 필요합니다. 다시 로그인해 주세요.'
+            : errMsg,
         timestamp: nowISO(),
       };
 
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // IME 호환 위해 onKeyDown 사용
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -134,7 +145,7 @@ export default function AIChatPage() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0] ?? null;
     if (file) {
       if (file.type.startsWith('audio/')) {
         setSelectedFile(file);
@@ -147,9 +158,7 @@ export default function AIChatPage() {
 
   const removeSelectedFile = () => {
     setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const startRecording = async () => {
@@ -185,7 +194,6 @@ export default function AIChatPage() {
   };
 
   const clearConversation = () => {
-    // 클라에서만 초기 메시지 넣도록 동일 패턴 유지
     setMessages([
       {
         id: makeId(),
@@ -195,11 +203,13 @@ export default function AIChatPage() {
         timestamp: nowISO(),
       },
     ]);
+    setError(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Chat Container */}
       <div className="flex flex-1 flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-white px-6 py-4 shadow-sm">
@@ -208,9 +218,7 @@ export default function AIChatPage() {
               <Bot className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                디지털자서전 도우미
-              </h1>
+              <h1 className="text-xl font-semibold text-gray-900">디지털자서전 도우미</h1>
               <p className="text-sm text-gray-500">ChatGPT 기반 글쓰기 도우미</p>
             </div>
           </div>
@@ -230,9 +238,7 @@ export default function AIChatPage() {
               <div
                 key={message.id}
                 className={`flex items-start space-x-3 ${
-                  message.role === 'user'
-                    ? 'flex-row-reverse space-x-reverse'
-                    : ''
+                  message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                 }`}
               >
                 <div
@@ -263,12 +269,9 @@ export default function AIChatPage() {
                   <div className="whitespace-pre-wrap">{message.content}</div>
                   <div
                     className={`mt-2 text-xs opacity-75 ${
-                      message.role === 'user'
-                        ? 'text-blue-100'
-                        : 'text-gray-500'
+                      message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
                     }`}
                   >
-                    {/* ✅ Hydration-safe: suppress warning + fixed locale/format (no seconds) */}
                     <time suppressHydrationWarning>
                       {new Date(message.timestamp).toLocaleTimeString('ko-KR', {
                         hour: 'numeric',
@@ -282,7 +285,7 @@ export default function AIChatPage() {
 
             {isLoading && (
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 rounded-full bg-green-500 p-2">
+                <div className="flex-shrink-0 rounded-full bg.green-500 p-2">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <div className="max-w-2xl rounded-2xl border bg-white px-4 py-3 shadow-sm">
@@ -290,9 +293,7 @@ export default function AIChatPage() {
                     <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400"></div>
                     <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400 delay-100"></div>
                     <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400 delay-200"></div>
-                    <span className="text-sm text-gray-500">
-                      답변을 생성하고 있습니다...
-                    </span>
+                    <span className="text-sm text-gray-500">답변을 생성하고 있습니다...</span>
                   </div>
                 </div>
               </div>
@@ -319,14 +320,9 @@ export default function AIChatPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <FileAudio className="mr-2 h-5 w-5 text-blue-500" />
-                <span className="text-sm text-blue-700">
-                  {selectedFile.name}
-                </span>
+                <span className="text-sm text-blue-700">{selectedFile.name}</span>
               </div>
-              <button
-                onClick={removeSelectedFile}
-                className="text-blue-500 hover:text-blue-700"
-              >
+              <button onClick={removeSelectedFile} className="text-blue-500 hover:text-blue-700">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -347,9 +343,7 @@ export default function AIChatPage() {
                   rows={3}
                   maxLength={2000}
                 />
-                <div className="mt-1 text-xs text-gray-500">
-                  {inputText.length}/2000
-                </div>
+                <div className="mt-1 text-xs text-gray-500">{inputText.length}/2000</div>
               </div>
 
               {/* File Upload */}
@@ -372,17 +366,11 @@ export default function AIChatPage() {
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 className={`rounded-full p-3 ${
-                  isRecording
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : 'bg-gray-100 hover:bg-gray-200'
+                  isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-gray-100 hover:bg-gray-200'
                 }`}
                 title={isRecording ? '녹음 중지' : '음성 녹음'}
               >
-                {isRecording ? (
-                  <MicOff className="h-5 w-5 text-white" />
-                ) : (
-                  <Mic className="h-5 w-5 text-gray-600" />
-                )}
+                {isRecording ? <MicOff className="h-5 w-5 text-white" /> : <Mic className="h-5 w-5 text-gray-600" />}
               </button>
 
               {/* Send Button */}
@@ -390,6 +378,7 @@ export default function AIChatPage() {
                 onClick={handleSendMessage}
                 disabled={(!inputText.trim() && !selectedFile) || isLoading}
                 className="rounded-full bg-blue-500 p-3 hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                title="전송"
               >
                 <Send className="h-5 w-5 text-white" />
               </button>
