@@ -81,31 +81,28 @@ export default function DashboardPage() {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10"></div>
-          <div className="absolute top-0 left-1/4 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-          <div className="absolute top-0 right-1/4 w-72 h-72 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
-          <div className="absolute -bottom-8 left-1/3 w-72 h-72 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-2000"></div>
+          <div className="absolute top-0 left-1/4 w-48 h-48 sm:w-72 sm:h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+          <div className="absolute top-0 right-1/4 w-48 h-48 sm:w-72 sm:h-72 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
+          <div className="absolute -bottom-8 left-1/3 w-48 h-48 sm:w-72 sm:h-72 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-2000"></div>
         </div>
         
-        <div className="relative mx-auto max-w-7xl px-6 py-24">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
           <div className="text-center">
-            <div className="mb-8 flex items-center justify-center">
+            <div className="mb-6 sm:mb-8 flex items-center justify-center">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-400 to-pink-500 blur-lg opacity-75"></div>
-                {/* <div className="relative rounded-full bg-gradient-to-r from-orange-400 to-pink-500 p-4">
-                  <Sparkles className="h-10 w-10 text-white" />
-                </div> */}
               </div>
             </div>
             
-            {/* <h1 className="mb-6 bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-6xl font-bold text-transparent">
+            <h1 className="mb-4 sm:mb-6 bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-3xl sm:text-4xl lg:text-6xl font-bold text-transparent">
               Digital Note
             </h1>
-             */}
-            <p className="mb-4 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            
+            <p className="mb-4 text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed px-4">
               기록과 기억 그리고... 당신의 소중한 추억들을 만들어보세요
             </p>
             
-            <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-6 text-sm text-gray-500">
               <div className="flex items-center">
                 <Star className="h-4 w-4 text-yellow-500 mr-1" />
                 <span>AI 기반 글쓰기</span>
@@ -124,9 +121,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-6 pb-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 lg:pb-24">
         {/* Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 h-full">
           {menuItems.map((item) => {
             const IconComponent = item.icon;
             return (
@@ -135,13 +132,13 @@ export default function DashboardPage() {
                 href={item.href}
                 className="group relative transform transition-all duration-500 hover:scale-105"
               >
-                <div className={`absolute inset-0 bg-gradient-to-r ${item.bgGradient} rounded-3xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                <div className={`absolute inset-0 bg-gradient-to-r ${item.bgGradient} rounded-xl sm:rounded-2xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
                 
-                <div className="relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-sm p-8 shadow-xl ring-1 ring-gray-200/50 transition-all duration-500 group-hover:shadow-2xl group-hover:ring-gray-300/50 border border-white/50">
+                <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white/80 backdrop-blur-sm p-3 sm:p-4 lg:p-6 shadow-xl ring-1 ring-gray-200/50 transition-all duration-500 group-hover:shadow-2xl group-hover:ring-gray-300/50 border border-white/50 h-full flex flex-col">
                   {/* Badge */}
                   {item.badge && (
-                    <div className="absolute top-4 right-4">
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                         item.badge === '새로움' 
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-purple-100 text-purple-800'
@@ -152,33 +149,33 @@ export default function DashboardPage() {
                   )}
                   
                   {/* Icon */}
-                  <div className="mb-6">
-                    <div className={`inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r ${item.gradient} shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:shadow-xl`}>
-                      <IconComponent className="h-8 w-8 text-white" />
+                  <div className="mb-3 sm:mb-4">
+                    <div className={`inline-flex h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-r ${item.gradient} shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:shadow-xl`}>
+                      <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white" />
                     </div>
                   </div>
                   
                   {/* Content */}
-                  <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors">
+                  <div className="space-y-1 sm:space-y-2 flex-1">
+                    <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 group-hover:text-gray-800 transition-colors">
                       {item.title}
                     </h3>
-                    <p className="text-lg font-medium text-gray-700">
+                    <p className="text-xs sm:text-sm lg:text-base font-medium text-gray-700">
                       {item.description}
                     </p>
-                    <p className="text-sm text-gray-500 leading-relaxed">
+                    <p className="text-xs text-gray-500 leading-relaxed">
                       {item.subtitle}
                     </p>
                   </div>
                   
                   {/* Arrow */}
-                  <div className="mt-6 flex items-center text-gray-400 group-hover:text-gray-600 transition-colors">
-                    <span className="text-sm font-medium mr-2">시작하기</span>
-                    <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                  <div className="mt-2 sm:mt-3 flex items-center text-gray-400 group-hover:text-gray-600 transition-colors">
+                    <span className="text-xs sm:text-sm font-medium mr-1">시작하기</span>
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 transform group-hover:translate-x-1 transition-transform" />
                   </div>
                   
                   {/* Hover overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-r ${item.bgGradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}></div>
+                  <div className={`absolute inset-0 bg-gradient-to-r ${item.bgGradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-xl sm:rounded-2xl`}></div>
                 </div>
               </a>
             );
@@ -186,19 +183,19 @@ export default function DashboardPage() {
         </div>
 
         {/* Bottom CTA Section */}
-        <div className="mt-24 text-center">
+        <div className="mt-4 sm:mt-6 lg:mt-8 text-center flex-none">
           <div className="relative inline-block">
             <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-pink-500 rounded-full blur opacity-75"></div>
-            <div className="relative bg-white rounded-full px-8 py-4 shadow-lg border border-gray-200/50">
-              <div className="flex items-center space-x-3">
-                <User className="h-6 w-6 text-orange-500" />
-                <span className="text-gray-800 font-medium text-lg">빛나는 삶을 위한 디지털 기록</span>
+            <div className="relative bg-white rounded-full px-4 py-2 sm:px-6 sm:py-3 shadow-lg border border-gray-200/50">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <User className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
+                <span className="text-gray-800 font-medium text-sm sm:text-base">빛나는 삶을 위한 디지털 기록</span>
                 <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
               </div>
             </div>
           </div>
           
-          <div className="mt-8 text-sm text-gray-500">
+          <div className="mt-2 sm:mt-4 text-xs sm:text-sm text-gray-500 px-4">
             <p>AI 기술과 감정 시각화로 더 풍부한 기록 경험을 만나보세요</p>
           </div>
         </div>
