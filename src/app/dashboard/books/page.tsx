@@ -1,12 +1,18 @@
+// src/app/dashboard/books/page.tsx
+
 "use client";
 
 import {
   Book,
   BookOpen,
   Calendar,
+  ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   Library,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   Plus,
@@ -15,11 +21,13 @@ import {
   SkipBack,
   SkipForward,
   Sparkles,
+  X,
 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /* =====================
  * 타입 정의
@@ -50,6 +58,14 @@ interface PageContent {
     flipH?: boolean;
     flipV?: boolean;
   };
+  elements?: Array<{
+    id: string;
+    type: 'text' | 'image' | 'placeholder';
+    position: { x: number; y: number; width: number; height: number };
+    style: Record<string, unknown>;
+    content?: string;
+    placeholder?: string;
+  }>;
 }
 
 interface ServerPageResponse {
@@ -82,7 +98,7 @@ interface CompletedWork {
   status: string;
   pages: Array<{
     id: string;
-    type: "TEXT" | "IMAGE" | "MIXED";
+    type: "TEXT" | "IMAGE" | "MIXED" | "TEMPLATE";
     content: PageContent;
     order: number;
   }>;
@@ -97,27 +113,40 @@ const normalizeStatus = (status?: string): string => {
   return status.toLowerCase();
 };
 
-const normalizePageType = (type?: string): "TEXT" | "IMAGE" | "MIXED" => {
+const normalizePageType = (type?: string): "TEXT" | "IMAGE" | "MIXED" | "TEMPLATE" => {
   if (!type) return "TEXT";
   const t = type.toUpperCase();
-  return t === "IMAGE" ? "IMAGE" : t === "MIXED" ? "MIXED" : "TEXT";
+  return t === "IMAGE" ? "IMAGE" : t === "MIXED" ? "MIXED" : t === "TEMPLATE" ? "TEMPLATE" : "TEXT";
 };
 
 const extractPageContent = (page: ServerPageResponse): PageContent => {
   const content = page.contentJson || page.content || {};
+  
+  // contentJson이 string인 경우 파싱
+  let parsedContent = content;
+  if (typeof content === 'string') {
+    try {
+      parsedContent = JSON.parse(content);
+    } catch (e) {
+      console.warn('Failed to parse content JSON:', e);
+      parsedContent = {};
+    }
+  }
+  
   return {
-    text: content.text,
-    image: content.imageUrl || content.image,
-    imageUrl: content.imageUrl || content.image,
-    fontSize: content.fontSize,
-    fontFamily: content.fontFamily,
-    fontWeight: content.fontWeight,
-    color: content.color,
-    textAlign: content.textAlign,
-    imagePosition: content.imagePosition,
-    imageSize: content.imageSize,
-    textStyle: content.textStyle,
-    imageStyle: content.imageStyle,
+    text: parsedContent.text,
+    image: parsedContent.imageUrl || parsedContent.image,
+    imageUrl: parsedContent.imageUrl || parsedContent.image,
+    fontSize: parsedContent.fontSize,
+    fontFamily: parsedContent.fontFamily,
+    fontWeight: parsedContent.fontWeight,
+    color: parsedContent.color,
+    textAlign: parsedContent.textAlign,
+    imagePosition: parsedContent.imagePosition,
+    imageSize: parsedContent.imageSize,
+    textStyle: parsedContent.textStyle,
+    imageStyle: parsedContent.imageStyle,
+    elements: parsedContent.elements, // 템플릿 요소 지원
   };
 };
 
@@ -133,6 +162,7 @@ const classifyStatus = (raw?: string) => {
  * 메인 컴포넌트
  * ===================== */
 export default function BooksPage() {
+  const router = useRouter();
   const [books, setBooks] = useState<CompletedWork[]>([]);
   const [selectedBook, setSelectedBook] = useState<CompletedWork | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,6 +170,7 @@ export default function BooksPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playInterval] = useState(4);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return books;
@@ -171,13 +202,17 @@ export default function BooksPage() {
     loadBooks();
   }, []);
 
+  // 자동 재생 로직
   useEffect(() => {
     let t: ReturnType<typeof setInterval> | null = null;
     if (isPlaying && selectedBook && selectedBook.pages.length > 1) {
       t = setInterval(() => {
         setCurrentPage((p) => {
           const next = p + 1;
-          if (!selectedBook || next >= selectedBook.pages.length) return p;
+          if (!selectedBook || next >= selectedBook.pages.length) {
+            setIsPlaying(false); // 마지막 페이지에서 자동 정지
+            return p;
+          }
           return next;
         });
       }, playInterval * 1000);
@@ -186,6 +221,56 @@ export default function BooksPage() {
       if (t) clearInterval(t);
     };
   }, [isPlaying, playInterval, selectedBook]);
+
+  // 키보드 네비게이션
+  useEffect(() => {
+    if (!selectedBook) return;
+    
+    const handleKeyPress = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          if (currentPage > 0) setCurrentPage(currentPage - 1);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (currentPage < selectedBook.pages.length - 1) setCurrentPage(currentPage + 1);
+          break;
+        case "Escape":
+          e.preventDefault();
+          if (isFullscreen) {
+            setIsFullscreen(false);
+          } else {
+            setSelectedBook(null);
+            setCurrentPage(0);
+            setIsPlaying(false);
+          }
+          break;
+        case " ": // 스페이스바
+          e.preventDefault();
+          setIsPlaying(!isPlaying);
+          break;
+        case "f":
+        case "F":
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            setIsFullscreen(!isFullscreen);
+          }
+          break;
+        case "Home":
+          e.preventDefault();
+          setCurrentPage(0);
+          break;
+        case "End":
+          e.preventDefault();
+          setCurrentPage(selectedBook.pages.length - 1);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [selectedBook, currentPage, isFullscreen, isPlaying]);
 
   const loadBooks = async () => {
     try {
@@ -266,7 +351,7 @@ export default function BooksPage() {
     book: CompletedWork,
     method: "kakao" | "email" | "link"
   ) => {
-    const shareUrl = `${window.location.origin}/dashboard/books/${book.id}/view`;
+    const shareUrl = `${window.location.origin}/dashboard/works/${book.id}/preview?from=books`;
     if (method === "link") {
       try {
         await navigator.clipboard.writeText(shareUrl);
@@ -277,6 +362,24 @@ export default function BooksPage() {
       }
     }
   };
+
+  const goToNextPage = useCallback(() => {
+    if (selectedBook && currentPage < selectedBook.pages.length - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  }, [selectedBook, currentPage]);
+
+  const goToPreviousPage = useCallback(() => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  }, [currentPage]);
+
+  const goToPage = useCallback((index: number) => {
+    if (selectedBook && index >= 0 && index < selectedBook.pages.length) {
+      setCurrentPage(index);
+    }
+  }, [selectedBook]);
 
   /* ========== 로딩 화면 ========== */
   if (isLoading) {
@@ -296,21 +399,18 @@ export default function BooksPage() {
     );
   }
 
-  /* ========== 단일 작품 뷰어 ========== */
+  /* ========== 개선된 단일 작품 뷰어 ========== */
   if (selectedBook) {
     return (
-      <BookViewer
+      <ImprovedBookViewer
         book={selectedBook}
         currentPage={currentPage}
         isPlaying={isPlaying}
-        onNextPage={() => {
-          if (currentPage < selectedBook.pages.length - 1)
-            setCurrentPage(currentPage + 1);
-        }}
-        onPrevPage={() => {
-          if (currentPage > 0) setCurrentPage(currentPage - 1);
-        }}
+        isFullscreen={isFullscreen}
+        onNextPage={goToNextPage}
+        onPrevPage={goToPreviousPage}
         onTogglePlay={() => setIsPlaying(!isPlaying)}
+        onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
         onDownload={downloadBook}
         onShare={shareBook}
         onPageChange={setCurrentPage}
@@ -318,12 +418,13 @@ export default function BooksPage() {
           setSelectedBook(null);
           setCurrentPage(0);
           setIsPlaying(false);
+          setIsFullscreen(false);
         }}
       />
     );
   }
 
-  /* ========== 현대적인 라이브러리 ========== */
+  /* ========== 라이브러리 화면 (기존과 동일) ========== */
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* 현대적인 상단 네비게이션 */}
@@ -415,7 +516,7 @@ export default function BooksPage() {
 }
 
 /* =====================
- * ShelfSection
+ * ShelfSection (기존과 동일)
  * ===================== */
 function ShelfSection({
   title,
@@ -471,7 +572,7 @@ function ShelfSection({
 }
 
 /* =====================
- * BookCover (현대적인 표지 디자인)
+ * BookCover (기존과 동일)
  * ===================== */
 function BookCover({
   book,
@@ -539,215 +640,442 @@ function BookCover({
 }
 
 /* =====================
- * BookViewer (현대적인 뷰어 디자인)
+ * 개선된 BookViewer 컴포넌트
  * ===================== */
-interface BookViewerProps {
+interface ImprovedBookViewerProps {
   book: CompletedWork;
   currentPage: number;
   isPlaying: boolean;
+  isFullscreen: boolean;
   onNextPage: () => void;
   onPrevPage: () => void;
   onTogglePlay: () => void;
+  onToggleFullscreen: () => void;
   onDownload: (bookId: string, format: "pdf" | "epub" | "images") => void;
   onShare: (book: CompletedWork, method: "kakao" | "email" | "link") => void;
   onPageChange: (page: number) => void;
   onBack: () => void;
 }
 
-function BookViewer({
+function ImprovedBookViewer({
   book,
   currentPage,
   isPlaying,
+  isFullscreen,
   onNextPage,
   onPrevPage,
   onTogglePlay,
+  onToggleFullscreen,
   onDownload,
   onShare,
   onPageChange,
   onBack,
-}: BookViewerProps) {
-  const current = book.pages[currentPage];
+}: ImprovedBookViewerProps) {
+  const currentPageData = book.pages[currentPage];
+  const nextPage = book.pages[currentPage + 1];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* 현대적인 헤더 */}
-      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/90 border-b border-gray-200/50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={onBack}
-                className="group flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
-              >
-                <ChevronRight className="h-4 w-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
-                <span className="font-medium">라이브러리로 돌아가기</span>
-              </button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="space-y-1">
-                <h2 className="text-lg font-bold text-gray-900 line-clamp-1">{book.title}</h2>
-                <p className="text-sm text-gray-500">
-                  <span className="inline-flex items-center space-x-2">
-                    <span>{currentPage + 1} / {book.pages.length}</span>
-                    <span>•</span>
-                    <span>{book._count.pages}페이지</span>
-                  </span>
-                </p>
+    <div className={`min-h-screen bg-gray-900 text-white ${isFullscreen ? "fixed inset-0 z-50" : ""}`}>
+      {/* 헤더 - 전체화면이 아닐 때만 표시 */}
+      {!isFullscreen && (
+        <div className="bg-gray-800 border-b border-gray-700">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={onBack}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="라이브러리로 돌아가기"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <div>
+                  <h1 className="text-xl font-bold">{book.title}</h1>
+                  <p className="text-sm text-gray-400">
+                    {currentPage + 1} / {book.pages.length}페이지
+                    {book.status && (
+                      <span className={`ml-2 px-2 py-1 text-xs rounded ${
+                        book.status === 'completed' ? 'bg-green-600' : 'bg-yellow-600'
+                      }`}>
+                        {book.status === 'completed' ? '완성' : '작업중'}
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => onDownload(book.id, "pdf")}
-                className="inline-flex items-center px-4 py-2 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                PDF 다운로드
-              </button>
-              <button
-                onClick={() => onShare(book, "link")}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                공유하기
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onDownload(book.id, "pdf")}
+                  className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF
+                </button>
+                
+                <button
+                  onClick={() => onShare(book, "link")}
+                  className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  공유
+                </button>
+                
+                <button
+                  onClick={onToggleFullscreen}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* 메인 뷰어 영역 */}
+      <div className="flex-1 flex items-center justify-center p-4">
+        {book.pages.length > 0 ? (
+          <>
+            <div className="relative max-w-6xl w-full">
+              <div className="bg-white rounded-lg shadow-2xl overflow-hidden" style={{ aspectRatio: '16/10', maxHeight: '80vh' }}>
+                <BookPagesViewer 
+                  currentPage={currentPageData} 
+                  nextPage={nextPage}
+                  isLastPage={currentPage >= book.pages.length - 1}
+                />
+              </div>
+
+              {/* 네비게이션 컨트롤 */}
+              <div className="absolute inset-y-0 left-0 flex items-center">
+                <button
+                  onClick={onPrevPage}
+                  disabled={currentPage === 0}
+                  className="p-3 bg-black/50 text-white rounded-full hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed -ml-6 transition-all"
+                  title="이전 페이지 (← 키)"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="absolute inset-y-0 right-0 flex items-center">
+                <button
+                  onClick={onNextPage}
+                  disabled={currentPage === book.pages.length - 1}
+                  className="p-3 bg-black/50 text-white rounded-full hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed -mr-6 transition-all"
+                  title="다음 페이지 (→ 키)"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* 전체화면 종료 버튼 */}
+            {isFullscreen && (
+              <button
+                onClick={onToggleFullscreen}
+                className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-all"
+                title="전체화면 종료 (ESC 키)"
+              >
+                <Minimize2 className="h-6 w-6" />
+              </button>
+            )}
+          </>
+        ) : (
+          /* 빈 페이지 */
+          <div className="bg-white rounded-lg shadow-2xl p-12 text-center text-gray-500" style={{ aspectRatio: '16/10', maxHeight: '80vh' }}>
+            <BookOpen className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-xl font-semibold mb-2">페이지가 없습니다</h3>
+            <p className="mb-6">이 작품에는 아직 추가된 페이지가 없습니다.</p>
+          </div>
+        )}
       </div>
 
-      {/* 책 뷰어 콘텐츠 */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-3xl shadow-2xl border border-gray-200/50 overflow-hidden">
-          {/* 페이지 콘텐츠 */}
-          <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-8">
-            {current ? (
-              <>
-                {current.type === "IMAGE" && current.content.image && (
-                  <div className="relative max-w-full max-h-full">
-                    <img
-                      src={current.content.image}
-                      alt="페이지 이미지"
-                      className="max-w-full max-h-full object-contain rounded-2xl shadow-lg"
-                    />
+      {/* 하단 컨트롤 - 전체화면이 아닐 때만 표시 */}
+      {!isFullscreen && book.pages.length > 0 && (
+        <div className="bg-gray-800 border-t border-gray-700">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            {/* 페이지 썸네일 */}
+            <div className="flex items-center justify-center space-x-2 mb-4 overflow-x-auto pb-2">
+              {book.pages.map((page, index) => (
+                <button
+                  key={page.id}
+                  onClick={() => onPageChange(index)}
+                  className={`relative flex-shrink-0 w-12 h-16 rounded border-2 overflow-hidden transition-all ${
+                    index === currentPage
+                      ? "border-blue-500 scale-110"
+                      : "border-gray-600 hover:border-gray-500"
+                  }`}
+                  title={`페이지 ${index + 1}로 이동`}
+                >
+                  <PageThumbnail page={page} />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs text-center py-1">
+                    {index + 1}
                   </div>
-                )}
-                {current.type === "TEXT" && current.content.text && (
-                  <div
-                    className="w-full h-full overflow-auto bg-white rounded-2xl shadow-inner p-8 prose prose-lg max-w-none"
-                    style={{
-                      fontSize: current.content.fontSize || 16,
-                      color: current.content.color || "#374151",
-                      textAlign: current.content.textAlign || "left",
-                      fontFamily: current.content.fontFamily || "system-ui",
-                    }}
-                  >
-                    {current.content.text}
-                  </div>
-                )}
-                {current.type === "MIXED" && (
-                  <div className="w-full h-full space-y-6">
-                    <div className="flex-1 flex items-center justify-center bg-white rounded-2xl shadow-inner p-6">
-                      {current.content.image && (
-                        <img
-                          src={current.content.image}
-                          alt="페이지 이미지"
-                          className="max-w-full max-h-full object-contain rounded-xl shadow-lg"
-                        />
-                      )}
-                    </div>
-                    <div
-                      className="flex-1 bg-white rounded-2xl shadow-inner p-6 overflow-auto prose max-w-none"
-                      style={{
-                        fontSize: current.content.fontSize || 16,
-                        color: current.content.color || "#374151",
-                        textAlign: current.content.textAlign || "left",
-                        fontFamily: current.content.fontFamily || "system-ui",
-                      }}
-                    >
-                      {current.content.text}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto">
-                  <BookOpen className="h-8 w-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 font-medium">페이지를 찾을 수 없습니다</p>
-              </div>
-            )}
-          </div>
+                </button>
+              ))}
+            </div>
 
-          {/* 현대적인 컨트롤 패널 */}
-          <div className="p-8 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200/50">
-            {/* 메인 컨트롤 */}
-            <div className="flex items-center justify-center space-x-6 mb-8">
+            {/* 재생 컨트롤 및 진행률 */}
+            <div className="flex items-center justify-center space-x-4 mb-4">
               <button
                 onClick={onPrevPage}
                 disabled={currentPage === 0}
-                className="p-4 bg-white border-2 border-gray-200 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 shadow-sm hover:shadow-md"
+                className="p-2 bg-gray-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
               >
-                <SkipBack className="h-5 w-5 text-gray-700" />
+                <SkipBack className="h-4 w-4" />
               </button>
               
               <button
                 onClick={onTogglePlay}
                 disabled={book.pages.length <= 1}
-                className="p-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="p-3 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
               >
-                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
               </button>
               
               <button
                 onClick={onNextPage}
                 disabled={currentPage === book.pages.length - 1}
-                className="p-4 bg-white border-2 border-gray-200 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 shadow-sm hover:shadow-md"
+                className="p-2 bg-gray-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
               >
-                <SkipForward className="h-5 w-5 text-gray-700" />
+                <SkipForward className="h-4 w-4" />
               </button>
             </div>
 
-            {/* 페이지 인디케이터 */}
-            <div className="flex items-center justify-center space-x-3 overflow-x-auto pb-2">
-              {book.pages.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => onPageChange(i)}
-                  className={`relative flex-shrink-0 transition-all duration-300 ${
-                    i === currentPage
-                      ? "w-12 h-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg"
-                      : "w-4 h-4 bg-gray-300 hover:bg-gray-400 rounded-full"
-                  }`}
-                  title={`${i + 1}페이지로 이동`}
-                >
-                  {i === currentPage && (
-                    <div className="absolute inset-0 bg-white/30 rounded-full animate-pulse" />
-                  )}
-                </button>
-              ))}
-            </div>
-
             {/* 진행률 표시 */}
-            <div className="mt-6 space-y-2">
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <span className="font-medium">읽기 진행률</span>
-                <span className="font-bold text-blue-600">
-                  {Math.round(((currentPage + 1) / book.pages.length) * 100)}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-500 ease-out"
-                  style={{
-                    width: `${((currentPage + 1) / book.pages.length) * 100}%`,
-                  }}
-                />
+            <div className="flex items-center justify-center space-x-4">
+              <span className="text-sm text-gray-400 whitespace-nowrap">
+                {currentPage + 1} / {book.pages.length}
+              </span>
+              <div className="flex-1 max-w-md">
+                <div className="bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${((currentPage + 1) / book.pages.length) * 100}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* 키보드 단축키 도움말 */}
+      {isFullscreen && (
+        <div className="absolute bottom-4 left-4 bg-black/70 text-white p-3 rounded-lg text-sm">
+          <div className="font-semibold mb-2">키보드 단축키</div>
+          <div>← → : 페이지 이동</div>
+          <div>스페이스바 : 재생/일시정지</div>
+          <div>Home/End : 처음/마지막 페이지</div>
+          <div>ESC : 전체화면 종료</div>
+          <div>F : 전체화면 토글</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =====================
+ * BookPagesViewer 컴포넌트
+ * ===================== */
+function BookPagesViewer({ 
+  currentPage, 
+  nextPage, 
+  isLastPage 
+}: { 
+  currentPage: CompletedWork['pages'][0]; 
+  nextPage?: CompletedWork['pages'][0]; 
+  isLastPage: boolean;
+}) {
+  return (
+    <div className="w-full h-full flex bg-white">
+      {/* 왼쪽 페이지 */}
+      <div className="flex-1 border-r border-gray-200">
+        <PageViewer page={currentPage} />
       </div>
+
+      {/* 오른쪽 페이지 */}
+      <div className="flex-1">
+        {nextPage ? (
+          <PageViewer page={nextPage} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-50">
+            <div className="text-center text-gray-400">
+              <div className="text-4xl mb-4">📖</div>
+              <p className="text-lg">끝</p>
+              {isLastPage && (
+                <p className="text-sm mt-2">마지막 페이지입니다</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* =====================
+ * PageViewer 컴포넌트
+ * ===================== */
+function PageViewer({ page }: { page: CompletedWork['pages'][0] }) {
+  const imageStyle = page.content.imageStyle;
+  const textStyle = page.content.textStyle;
+
+  return (
+    <div className="w-full h-full flex flex-col relative bg-white text-black overflow-hidden">
+      {/* 템플릿 기반 페이지 */}
+      {page.type === 'TEMPLATE' && page.content.elements ? (
+        <div className="w-full h-full relative">
+          {page.content.elements.map((element) => (
+            <div
+              key={element.id}
+              className="absolute"
+              style={{
+                left: `${(element.position.x / 300) * 100}%`,
+                top: `${(element.position.y / 400) * 100}%`,
+                width: `${(element.position.width / 300) * 100}%`,
+                height: `${(element.position.height / 400) * 100}%`,
+                fontSize: typeof element.style.fontSize === 'number' ? `${Math.min(element.style.fontSize, 14)}px` : '12px'
+              }}
+            >
+              {element.type === 'text' && (
+                <div 
+                  className="w-full h-full flex items-start text-gray-800 leading-tight overflow-hidden"
+                  style={{
+                    color: typeof element.style.color === 'string' ? element.style.color : '#333',
+                    textAlign: typeof element.style.textAlign === 'string' ? element.style.textAlign as 'left' | 'center' | 'right' : 'left',
+                    fontWeight: typeof element.style.fontWeight === 'string' ? element.style.fontWeight : 'normal',
+                    fontStyle: typeof element.style.fontStyle === 'string' ? element.style.fontStyle : 'normal'
+                  }}
+                >
+                  <span className="line-clamp-6">
+                    {element.content || element.placeholder || '텍스트'}
+                  </span>
+                </div>
+              )}
+              {element.type === 'placeholder' && (
+                <div className="w-full h-full bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center">
+                  <BookOpen className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs text-gray-500 ml-1">이미지 없음</span>
+                </div>
+              )}
+              {element.type === 'image' && element.content && (
+                <img
+                  src={element.content}
+                  alt="Page element"
+                  className="w-full h-full object-cover rounded"
+                  onError={(e) => {
+                    console.error('이미지 로드 실패:', element.content);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* 이미지 콘텐츠 */}
+          {page.content.image && (
+            <div
+              className={`${
+                page.type === "MIXED" ? "flex-1" : "w-full h-full"
+              } flex items-center justify-center p-4`}
+            >
+              <img
+                src={page.content.image}
+                alt="Page content"
+                className="max-w-full max-h-full object-contain"
+                style={{
+                  transform: `
+                    rotate(${imageStyle?.rotation || 0}deg)
+                    scaleX(${imageStyle?.flipH ? -1 : 1})
+                    scaleY(${imageStyle?.flipV ? -1 : 1})
+                  `,
+                }}
+                loading="lazy"
+                onError={(e) => {
+                  console.error('페이지 이미지 로드 실패:', page.content.image);
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+
+          {/* 텍스트 콘텐츠 */}
+          {page.content.text && (
+            <div
+              className={`${
+                page.type === "MIXED" ? "flex-1" : "w-full h-full"
+              } p-8 flex items-center overflow-y-auto`}
+            >
+              <div
+                className="w-full leading-relaxed"
+                style={{
+                  fontSize: textStyle?.fontSize || page.content.fontSize || 16,
+                  color: textStyle?.color || page.content.color || "#000000",
+                  textAlign: textStyle?.align || page.content.textAlign || "left",
+                  fontWeight: textStyle?.bold ? "bold" : page.content.fontWeight || "normal",
+                  fontStyle: textStyle?.italic ? "italic" : "normal",
+                  fontFamily: textStyle?.fontFamily || page.content.fontFamily || "inherit",
+                }}
+              >
+                {page.content.text.split("\n").map((line, index) => (
+                  <p key={index} className="mb-2">
+                    {line || "\u00A0"}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 빈 상태 */}
+          {!page.content.image && !page.content.text && (!page.content.elements || page.content.elements.length === 0) && (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <div className="text-center text-gray-400">
+                <div className="text-4xl mb-4">📄</div>
+                <p className="text-lg">빈 페이지</p>
+                <p className="text-sm">내용이 없습니다</p>
+                <p className="text-xs mt-2">페이지 타입: {page.type}</p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* =====================
+ * PageThumbnail 컴포넌트
+ * ===================== */
+function PageThumbnail({ page }: { page: CompletedWork['pages'][0] }) {
+  return (
+    <div className="w-full h-full bg-white overflow-hidden">
+      {page.content.image ? (
+        <img
+          src={page.content.image}
+          alt="Thumbnail"
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      ) : page.content.text ? (
+        <div className="w-full h-full p-1 text-[6px] text-black overflow-hidden leading-tight">
+          {page.content.text.substring(0, 50)}
+          {page.content.text.length > 50 ? "..." : ""}
+        </div>
+      ) : page.content.elements && page.content.elements.length > 0 ? (
+        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+          <BookOpen className="w-3 h-3 text-gray-400" />
+        </div>
+      ) : (
+        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+          <div className="text-[8px] text-gray-400">빈 페이지</div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,88 +1,17 @@
 // app/api/works/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma, WorkStatus } from "@prisma/client";
 
+import { WorkStatus } from "@prisma/client";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// cuid(25자 영숫자) 검사 — 필요 없으면 제거하세요
-const isCuid = (id: string) => /^[a-z0-9]{25}$/i.test(id);
-
-type Params = { id: string };
-
-// 인쇄 사양 포함된 작품 타입
-type WorkWithPrintSpec = {
-  workId: string;
-  userId: string;
-  title: string;
-  coverImage: string | null;
-  status: WorkStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  pages: Array<{
-    pageId: string;
-    orderIndex: number;
-    contentType: string;
-    contentJson: Prisma.JsonValue;
-  }>;
-  printSpec: {
-    specId: string;
-    paperSize: string;
-    coverType: string;
-    innerPaper: string;
-    orientation: string | null;
-    additionalOptions: Prisma.JsonValue | null;
-    createdAt: Date;
-    updatedAt: Date;
-  } | null;
-  exports?: Array<{
-    exportId: string;
-    fileType: string;
-    filePath: string;
-    createdAt: Date;
-  }>;
-};
-
-function transformWorkDetail(work: WorkWithPrintSpec) {
-  return {
-    id: work.workId,
-    title: work.title,
-    status: work.status.toLowerCase(), // 'draft' | 'completed'
-    coverImage: work.coverImage,
-    createdAt: work.createdAt.toISOString(),
-    updatedAt: work.updatedAt.toISOString(),
-    pages: work.pages.map((p) => ({
-      id: p.pageId,
-      type: p.contentType.toUpperCase(), // 'TEXT' | 'IMAGE' | 'MIXED'
-      order: p.orderIndex,
-      content: p.contentJson,
-    })),
-    printSpec: work.printSpec ? {
-      specId: work.printSpec.specId,
-      paperSize: work.printSpec.paperSize.toLowerCase(),
-      coverType: work.printSpec.coverType.toLowerCase(),
-      innerPaper: work.printSpec.innerPaper.toLowerCase(),
-      orientation: work.printSpec.orientation || "portrait",
-      additionalOptions: work.printSpec.additionalOptions,
-      createdAt: work.printSpec.createdAt.toISOString(),
-      updatedAt: work.printSpec.updatedAt.toISOString(),
-    } : null,
-    exports: work.exports?.map((e) => ({
-      id: e.exportId,
-      fileType: e.fileType,
-      filePath: e.filePath,
-      createdAt: e.createdAt.toISOString(),
-    })) || [],
-  };
-}
-
-/* ---------------- GET ---------------- */
+// 개별 작품 조회
 export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<Params> } // 👈 Promise로 받기
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const me = await getSessionUser();
@@ -90,126 +19,108 @@ export async function GET(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const { id: workId } = await context.params; // 👈 Promise 해제
-    if (!isCuid(workId)) {
-      return NextResponse.json({ error: "INVALID_WORK_ID" }, { status: 400 });
+    const { id: workId } = await params;
+    
+    if (!workId) {
+      return NextResponse.json({ error: "Work ID is required" }, { status: 400 });
     }
 
+    console.log('작품 조회 요청:', workId, '사용자:', me.userId);
+
+    // 작품 조회 (소유자 확인 포함)
     const work = await prisma.work.findFirst({
-      where: { workId, userId: me.userId },
-      include: { 
-        pages: { orderBy: { orderIndex: "asc" } },
-        printSpec: true, // 인쇄 사양 포함
-        exports: { 
-          orderBy: { createdAt: "desc" },
-          take: 10 // 최근 10개만
-        }
+      where: {
+        workId: workId,
+        userId: me.userId // 소유자만 조회 가능
       },
+      include: {
+        pages: {
+          orderBy: { orderIndex: "asc" }
+        },
+        printSpec: true,
+        exports: {
+          orderBy: { createdAt: "desc" }
+        }
+      }
     });
 
     if (!work) {
-      return NextResponse.json({ error: "Work not found or unauthorized" }, { status: 404 });
+      console.log('작품을 찾을 수 없음:', workId);
+      return NextResponse.json({ 
+        error: "Work not found", 
+        message: "작품을 찾을 수 없거나 접근 권한이 없습니다." 
+      }, { status: 404 });
     }
 
-    const payload = transformWorkDetail(work as unknown as WorkWithPrintSpec);
-    return NextResponse.json(payload);
+    console.log('작품 조회 성공:', work.workId, '페이지 수:', work.pages.length);
+
+    // 응답 데이터 변환
+    const response = {
+      id: work.workId,
+      title: work.title,
+      status: work.status.toLowerCase(),
+      coverImage: work.coverImage,
+      coverTemplateId: work.coverTemplateId || undefined,
+      createdAt: work.createdAt.toISOString(),
+      updatedAt: work.updatedAt.toISOString(),
+      pages: work.pages.map((page) => {
+        // JSON 데이터를 올바르게 파싱
+        let content;
+        try {
+          content = typeof page.contentJson === 'string' 
+            ? JSON.parse(page.contentJson) 
+            : page.contentJson;
+        } catch (error) {
+          console.error('페이지 내용 파싱 오류:', error);
+          content = {};
+        }
+
+        return {
+          id: page.pageId,
+          type: page.contentType.toLowerCase(),
+          templateId: undefined, // 템플릿 ID는 페이지 테이블에 없으므로 undefined
+          content: content,
+          order: page.orderIndex,
+        };
+      }),
+      printSpec: work.printSpec ? {
+        specId: work.printSpec.specId,
+        paperSize: work.printSpec.paperSize.toLowerCase(),
+        coverType: work.printSpec.coverType.toLowerCase(),
+        innerPaper: work.printSpec.innerPaper.toLowerCase(),
+        orientation: work.printSpec.orientation || "portrait",
+        additionalOptions: work.printSpec.additionalOptions,
+      } : null,
+      exports: work.exports?.map((exp) => ({
+        id: exp.exportId,
+        fileType: exp.fileType,
+        filePath: exp.filePath,
+        createdAt: exp.createdAt.toISOString(),
+      })) || [],
+    };
+
+    return NextResponse.json(response);
+
   } catch (err) {
     console.error("Get work error:", err);
-    return NextResponse.json({ error: "Failed to fetch work" }, { status: 500 });
-  }
-}
-
-/* --------------- DELETE --------------- */
-export async function DELETE(
-  _req: NextRequest,
-  context: { params: Promise<Params> } // 👈 Promise
-) {
-  try {
-    const me = await getSessionUser();
-    if (!me) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
-    const { id: workId } = await context.params;
-    if (!isCuid(workId)) {
-      return NextResponse.json({ error: "INVALID_WORK_ID" }, { status: 400 });
-    }
-
-    // 인쇄 주문이 있는지 확인
-    const printOrders = await prisma.printOrder.findMany({
-      where: { workId },
-      select: { orderId: true, status: true },
-    });
-
-    // 진행 중인 인쇄 주문이 있으면 삭제 불가
-    const activePrintOrders = printOrders.filter(order => 
-      ['pending', 'processing'].includes(order.status.toLowerCase())
-    );
-
-    if (activePrintOrders.length > 0) {
-      return NextResponse.json(
-        { 
-          error: "진행 중인 인쇄 주문이 있는 작품은 삭제할 수 없습니다",
-          details: `${activePrintOrders.length}개의 활성 주문이 있습니다`
-        }, 
-        { status: 400 }
-      );
-    }
-
-    // 트랜잭션으로 안전하게 삭제
-    await prisma.$transaction(async (tx) => {
-      // 1. 완료된 인쇄 주문 삭제 (진행 중인 것은 위에서 체크함)
-      await tx.printOrder.deleteMany({
-        where: { workId, userId: me.userId },
-      });
-
-      // 2. 인쇄 사양 삭제 (CASCADE로 자동 삭제되지만 명시적으로)
-      await tx.printSpecification.deleteMany({
-        where: { workId },
-      });
-
-      // 3. 내보내기 기록 삭제
-      await tx.export.deleteMany({
-        where: { workId },
-      });
-
-      // 4. 페이지 삭제 (CASCADE로 자동 삭제되지만 명시적으로)
-      await tx.page.deleteMany({
-        where: { workId },
-      });
-
-      // 5. 작품 삭제
-      const result = await tx.work.deleteMany({
-        where: { workId, userId: me.userId }, // 본인 소유만 삭제
-      });
-
-      if (result.count === 0) {
-        throw new Error("Work not found or unauthorized");
-      }
-    });
-
-    return NextResponse.json({ 
-      message: "작품이 성공적으로 삭제되었습니다",
-      deletedPrintOrders: printOrders.length 
-    });
-  } catch (err) {
-    console.error("Delete work error:", err);
     
     if (err instanceof Error) {
-      if (err.message.includes("not found")) {
-        return NextResponse.json({ error: "Work not found or unauthorized" }, { status: 404 });
-      }
-      return NextResponse.json({ error: err.message }, { status: 500 });
+      return NextResponse.json({ 
+        error: "Failed to fetch work", 
+        details: err.message 
+      }, { status: 500 });
     }
     
-    return NextResponse.json({ error: "Failed to delete work" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Unknown error occurred" 
+    }, { status: 500 });
   }
 }
 
-/* ---------------- PATCH ---------------- */
+// 작품 업데이트
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<Params> } // 👈 Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const me = await getSessionUser();
@@ -217,82 +128,180 @@ export async function PATCH(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const { id: workId } = await context.params;
-    if (!isCuid(workId)) {
-      return NextResponse.json({ error: "INVALID_WORK_ID" }, { status: 400 });
+    const { id: workId } = await params;
+    const body = await req.json();
+
+    if (!workId) {
+      return NextResponse.json({ error: "Work ID is required" }, { status: 400 });
     }
 
-    const body = await req.json() as { 
-      status?: string;
+    console.log('작품 업데이트 요청:', workId, body);
+
+    // 작품 존재 및 소유자 확인
+    const existingWork = await prisma.work.findFirst({
+      where: {
+        workId: workId,
+        userId: me.userId
+      }
+    });
+
+    if (!existingWork) {
+      return NextResponse.json({ 
+        error: "Work not found or unauthorized" 
+      }, { status: 404 });
+    }
+
+    // status 필드 변환 함수
+    const parseWorkStatus = (status: string): WorkStatus => {
+      const normalizedStatus = status.toLowerCase();
+      switch (normalizedStatus) {
+        case 'completed':
+          return WorkStatus.completed;
+        case 'draft':
+          return WorkStatus.draft;
+        default:
+          return existingWork.status; // 기존 상태 유지
+      }
+    };
+
+    // 업데이트할 데이터 준비
+    const updateData: {
       title?: string;
-      coverImage?: string;
-    };
-
-    const updateData: Partial<{
-      status: WorkStatus;
-      title: string;
-      coverImage: string | null;
+      coverImage?: string | null;
+      status?: WorkStatus;
       updatedAt: Date;
-    }> = {
-      updatedAt: new Date()
+    } = {
+      updatedAt: new Date(),
     };
 
-    // 상태 업데이트
-    if (body.status) {
-      updateData.status = body.status.toLowerCase() === "completed" 
-        ? WorkStatus.completed 
-        : WorkStatus.draft;
-    }
-
-    // 제목 업데이트
+    // 각 필드별로 업데이트 여부 확인
     if (body.title !== undefined) {
       updateData.title = body.title;
     }
 
-    // 커버 이미지 업데이트
     if (body.coverImage !== undefined) {
-      updateData.coverImage = body.coverImage || null;
+      updateData.coverImage = body.coverImage;
     }
 
-    const result = await prisma.work.updateMany({
-      where: { workId, userId: me.userId },
-      data: updateData,
-    });
-
-    if (result.count === 0) {
-      return NextResponse.json({ error: "Work not found or unauthorized" }, { status: 404 });
+    if (body.status !== undefined) {
+      updateData.status = parseWorkStatus(body.status);
+      console.log('상태 변경:', body.status, '->', updateData.status);
     }
 
-    // 업데이트된 작품 조회
-    const updatedWork = await prisma.work.findFirst({
-      where: { workId, userId: me.userId },
-      include: { 
-        printSpec: true,
-        _count: { select: { pages: true } }
+    // 작품 정보 업데이트
+    const updatedWork = await prisma.work.update({
+      where: {
+        workId: workId
       },
+      data: updateData,
+      include: {
+        pages: {
+          orderBy: { orderIndex: "asc" }
+        },
+        printSpec: true,
+        exports: {
+          orderBy: { createdAt: "desc" }
+        }
+      }
     });
+
+    console.log('작품 업데이트 완료:', updatedWork.workId, '상태:', updatedWork.status);
 
     const response = {
-      message: "작품이 성공적으로 업데이트되었습니다",
-      work: updatedWork ? {
-        id: updatedWork.workId,
-        title: updatedWork.title,
-        status: updatedWork.status.toLowerCase(),
-        coverImage: updatedWork.coverImage,
-        updatedAt: updatedWork.updatedAt.toISOString(),
-        printSpec: updatedWork.printSpec ? {
-          paperSize: updatedWork.printSpec.paperSize.toLowerCase(),
-          coverType: updatedWork.printSpec.coverType.toLowerCase(),
-          innerPaper: updatedWork.printSpec.innerPaper.toLowerCase(),
-          orientation: updatedWork.printSpec.orientation || "portrait",
-        } : null,
-        pageCount: updatedWork._count.pages,
+      id: updatedWork.workId,
+      title: updatedWork.title,
+      status: updatedWork.status.toLowerCase(),
+      coverImage: updatedWork.coverImage,
+      coverTemplateId: updatedWork.coverTemplateId || undefined,
+      createdAt: updatedWork.createdAt.toISOString(),
+      updatedAt: updatedWork.updatedAt.toISOString(),
+      pages: updatedWork.pages.map((page) => ({
+        id: page.pageId,
+        type: page.contentType.toLowerCase(),
+        content: page.contentJson,
+        order: page.orderIndex,
+      })),
+      printSpec: updatedWork.printSpec ? {
+        specId: updatedWork.printSpec.specId,
+        paperSize: updatedWork.printSpec.paperSize.toLowerCase(),
+        coverType: updatedWork.printSpec.coverType.toLowerCase(),
+        innerPaper: updatedWork.printSpec.innerPaper.toLowerCase(),
+        orientation: updatedWork.printSpec.orientation || "portrait",
+        additionalOptions: updatedWork.printSpec.additionalOptions,
       } : null,
+      exports: updatedWork.exports?.map((exp) => ({
+        id: exp.exportId,
+        fileType: exp.fileType,
+        filePath: exp.filePath,
+        createdAt: exp.createdAt.toISOString(),
+      })) || [],
     };
 
+    // work 객체로 감싸지 않고 직접 반환
     return NextResponse.json(response);
+
   } catch (err) {
     console.error("Update work error:", err);
-    return NextResponse.json({ error: "Failed to update work" }, { status: 500 });
+    
+    if (err instanceof Error) {
+      return NextResponse.json({ 
+        error: "Failed to update work",
+        details: err.message
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      error: "Unknown error occurred" 
+    }, { status: 500 });
+  }
+}
+
+// 작품 삭제
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const me = await getSessionUser();
+    if (!me) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const { id: workId } = await params;
+
+    if (!workId) {
+      return NextResponse.json({ error: "Work ID is required" }, { status: 400 });
+    }
+
+    // 작품 존재 및 소유자 확인
+    const existingWork = await prisma.work.findFirst({
+      where: {
+        workId: workId,
+        userId: me.userId
+      }
+    });
+
+    if (!existingWork) {
+      return NextResponse.json({ 
+        error: "Work not found or unauthorized" 
+      }, { status: 404 });
+    }
+
+    // 관련 데이터와 함께 삭제 (CASCADE로 자동 삭제됨)
+    await prisma.work.delete({
+      where: {
+        workId: workId
+      }
+    });
+
+    return NextResponse.json({ 
+      message: "Work deleted successfully" 
+    });
+
+  } catch (err) {
+    console.error("Delete work error:", err);
+    return NextResponse.json({ 
+      error: "Failed to delete work" 
+    }, { status: 500 });
   }
 }

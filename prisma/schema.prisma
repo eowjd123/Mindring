@@ -130,6 +130,7 @@ model Work {
   userId     String     @db.Char(25)
   title      String     @db.VarChar(191)
   coverImage String?    @db.LongText
+  coverTemplateId String?    @db.VarChar(191)
   status     WorkStatus @default(draft)
   shareToken String?    @unique @db.Char(32)
   createdAt  DateTime   @default(now())
