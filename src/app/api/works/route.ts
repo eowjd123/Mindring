@@ -1,4 +1,4 @@
-// app/api/works/route.ts - 완전한 타입 안전성 버전
+// app/api/works/route.ts
 
 import { CoverType, InnerPaper, PageContentType, PaperSize, Prisma, WorkStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";

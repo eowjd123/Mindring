@@ -8,6 +8,29 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// 인터페이스 정의
+interface RequestBodyPage {
+  id: string;
+  type: string;
+  templateId?: string;
+  content: Prisma.JsonValue;
+}
+
+interface RequestBodyPrintSpec {
+  paperSize: string;
+  coverType: string;
+  innerPaper: string;
+  orientation: string;
+}
+
+interface ValidatedBodyType {
+  workId?: string;
+  title: string;
+  coverImage?: string;
+  pages: RequestBodyPage[];
+  printSpec?: RequestBodyPrintSpec;
+}
+
 // cuid 라이브러리가 없다면 간단한 25자 ID 생성 함수
 const generateWorkId = (): string => {
   const timestamp = Date.now().toString(36);
@@ -24,39 +47,39 @@ const normalizePageType = (type: string): PageContentType => {
   const normalizedType = type.toLowerCase();
   switch (normalizedType) {
     case "text":
-      return 'text' as PageContentType;
+      return PageContentType.text;
     case "image":
-      return 'image' as PageContentType;
+      return PageContentType.image;
     case "mixed":
-      return 'mixed' as PageContentType;
+      return PageContentType.mixed;
     case "template":
-      return 'mixed' as PageContentType; // template 타입을 mixed로 매핑
+      return PageContentType.mixed; // template 타입을 mixed로 매핑
     default:
-      return 'text' as PageContentType; // 기본값
+      return PageContentType.text; // 기본값
   }
 };
 
 // 인쇄 사양 타입 변환 함수들
 const normalizePaperSize = (value: string): PaperSize => {
   const normalizedValue = value.toUpperCase();
-  if (normalizedValue === 'A4') return 'A4' as PaperSize;
-  if (normalizedValue === 'SHIN') return 'SHIN' as PaperSize;
-  return 'A4' as PaperSize; // 기본값
+  if (normalizedValue === 'A4') return PaperSize.A4;
+  if (normalizedValue === 'SHIN') return PaperSize.SHIN;
+  return PaperSize.A4; // 기본값
 };
 
 const normalizeCoverType = (value: string): CoverType => {
   const normalizedValue = value.toLowerCase();
-  if (normalizedValue === 'soft_matte') return 'soft_matte' as CoverType;
-  if (normalizedValue === 'hard') return 'hard' as CoverType;
-  if (normalizedValue === 'none') return 'none' as CoverType;
-  return 'soft_matte' as CoverType; // 기본값
+  if (normalizedValue === 'soft_matte') return CoverType.soft_matte;
+  if (normalizedValue === 'hard') return CoverType.hard;
+  if (normalizedValue === 'none') return CoverType.none;
+  return CoverType.soft_matte; // 기본값
 };
 
 const normalizeInnerPaper = (value: string): InnerPaper => {
   const normalizedValue = value.toLowerCase();
-  if (normalizedValue === 'plain') return 'plain' as InnerPaper;
-  if (normalizedValue === 'none') return 'none' as InnerPaper;
-  return 'plain' as InnerPaper; // 기본값
+  if (normalizedValue === 'plain') return InnerPaper.plain;
+  if (normalizedValue === 'none') return InnerPaper.none;
+  return InnerPaper.plain; // 기본값
 };
 
 // 작품 목록 조회 (에디터용)
@@ -141,36 +164,27 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    let body;
+    let body: unknown;
     try {
       body = await req.json();
     } catch (error) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
+    // 요청 본문 타입 검증 및 변환
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const rawBody = body as Record<string, unknown>;
+
     // 요청 본문 타입 정의 및 검증
-    const validatedBody = {
-      workId: body.workId || undefined,
-      title: body.title || "새로운 작품",
-      coverImage: body.coverImage || undefined,
-      pages: Array.isArray(body.pages) ? body.pages : [],
-      printSpec: body.printSpec || undefined,
-    } as {
-      workId?: string;
-      title: string;
-      coverImage?: string;
-      pages: Array<{
-        id: string;
-        type: string;
-        templateId?: string;
-        content: Prisma.JsonValue;
-      }>;
-      printSpec?: {
-        paperSize: string;
-        coverType: string;
-        innerPaper: string;
-        orientation: string;
-      };
+    const validatedBody: ValidatedBodyType = {
+      workId: typeof rawBody.workId === 'string' ? rawBody.workId : undefined,
+      title: typeof rawBody.title === 'string' ? rawBody.title : "새로운 작품",
+      coverImage: typeof rawBody.coverImage === 'string' ? rawBody.coverImage : undefined,
+      pages: Array.isArray(rawBody.pages) ? rawBody.pages as RequestBodyPage[] : [],
+      printSpec: rawBody.printSpec && typeof rawBody.printSpec === 'object' ? rawBody.printSpec as RequestBodyPrintSpec : undefined,
     };
 
     // pages 배열 내 요소들 검증 및 ID 길이 확인
@@ -405,15 +419,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const body = await req.json() as {
-      title?: string;
-      template?: string;
-      printSpec?: {
-        paperSize: string;
-        coverType: string;
-        innerPaper: string;
-        orientation: string;
-      };
+    const rawBody = await req.json() as Record<string, unknown>;
+    
+    const body = {
+      title: typeof rawBody.title === 'string' ? rawBody.title : undefined,
+      template: typeof rawBody.template === 'string' ? rawBody.template : undefined,
+      printSpec: rawBody.printSpec && typeof rawBody.printSpec === 'object' ? rawBody.printSpec as RequestBodyPrintSpec : undefined,
     };
 
     const newWorkId = generateWorkId();
