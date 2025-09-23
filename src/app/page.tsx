@@ -1,3 +1,6 @@
+// app/page.tsx
+
+import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
@@ -7,7 +10,6 @@ export default function RootPage() {
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 py-3">
-          
           {/* Top Navigation Bar */}
           <div className="flex items-center justify-end mb-2">
             <nav className="flex items-center gap-6 text-sm text-gray-600">
@@ -25,7 +27,6 @@ export default function RootPage() {
 
           {/* Main Header Row */}
           <div className="flex items-center justify-between gap-8">
-            
             {/* Brand Logo */}
             <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
               <div className="h-12 w-12 flex items-center justify-center">
@@ -203,7 +204,7 @@ function ServiceCard({
   href 
 }: ServiceType) {
   return (
-    <div className="group">
+    <div className="group relative">
       <Link
         href={href}
         className={`
@@ -240,87 +241,120 @@ function ServiceCard({
   );
 }
 
-// Service Icon Components
+/* ---------------------------
+   Service Icon Components
+   --------------------------- */
 const ServiceIcons = {
+  // ✅ 기억퍼즐: public/img/icon_1.png 이미지를 사용
   puzzle: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="#F59E0B">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_1.png"  // ← public/img/icon_1.png
+          alt="기억퍼즐 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
   book: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
-        <rect x="4" y="4" width="16" height="16" rx="1" fill="white"/>
-        <path d="M6 6h4v1H6V6zm0 2h8v1H6V8zm0 2h8v1H6v-1zm0 2h6v1H6v-1z" fill="#3B82F6"/>
-      </svg>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_2.png"  // ← public/img/icon_1.png
+          alt="라이프북 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
+      </div>
     </div>
   ),
   bulb: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-md">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M9 21c0 .6.4 1 1 1h4c.6 0 1-.4 1-1v-1H9v1Zm3-19a7 7 0 0 0-7 7c0 2.4 1.2 4.6 3 5.8V17c0 .6.4 1 1 1h6c.6 0 1-.4 1-1v-2.2c1.8-1.3 3-3.5 3-5.8a7 7 0 0 0-7-7Z"/>
-        </svg>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_3.png"  // ← public/img/icon_1.png
+          alt="인지클래스 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
   palette: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-12 h-10 bg-gray-200 rounded-full relative shadow-md">
-        <div className="absolute top-1 left-2 w-3 h-3 bg-blue-400 rounded-full" />
-        <div className="absolute top-1 right-2 w-3 h-3 bg-red-400 rounded-full" />
-        <div className="absolute top-3 left-3 w-3 h-3 bg-yellow-400 rounded-full" />
-        <div className="absolute top-3 right-3 w-3 h-3 bg-green-400 rounded-full" />
-        <div className="absolute -right-2 bottom-0 w-6 h-4 bg-amber-700 rounded-r-full"></div>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_4.png"  // ← public/img/icon_1.png
+          alt="마음색칠 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
   document: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-10 h-12 bg-white rounded shadow-md relative">
-        <div className="absolute top-2 left-1 right-1 h-1 bg-gray-300 rounded" />
-        <div className="absolute top-4 left-1 right-1 h-1 bg-gray-300 rounded" />
-        <div className="absolute top-6 left-1 right-1 h-1 bg-gray-300 rounded" />
-        <div className="absolute -right-1 top-8 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
-            <path d="M9 16.17 4.83 12l-1.42 1.41L9 19l12-12-1.41-1.41z" />
-          </svg>
-        </div>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_5.png"  // ← public/img/icon_1.png
+          alt="활동자료 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
   cap: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-10 h-10 bg-gray-800 rounded-full relative flex items-center justify-center shadow-md">
-        <div className="w-6 h-4 bg-black rounded-t-full" />
-        <div className="absolute -top-1 w-2 h-2 bg-yellow-400 rounded-full" />
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_6.png"  // ← public/img/icon_1.png
+          alt="허브 아카데미 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
   clipboard: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-10 h-12 bg-white rounded shadow-md relative">
-        <div className="absolute top-1 left-1 right-1 h-1 bg-blue-500 rounded" />
-        <div className="absolute top-3 left-1 w-6 h-1 bg-gray-300 rounded" />
-        <div className="absolute top-5 left-1 w-4 h-1 bg-gray-300 rounded" />
-        <div className="absolute -right-1 bottom-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow-sm">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
-            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-          </svg>
-        </div>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_7.png"  // ← public/img/icon_1.png
+          alt="시니어 종합검사 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
   heart: (
     <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-red-500 rounded-full flex items-center justify-center shadow-md">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M12 21.35 10.55 20C5.4 15.36 2 12.28 2 8.5A5.5 5.5 0 0 1 7.5 3c1.74 0 3.41.81 4.5 2.09A5.94 5.94 0 0 1 16.5 3 5.5 5.5 0 0 1 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-        </svg>
+      <div className="relative w-16 h-16">
+        <Image
+          src="/img/icon_8.png"  // ← public/img/icon_1.png
+          alt="사회공헌 아이콘"
+          fill
+          sizes="64px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
       </div>
     </div>
   ),
