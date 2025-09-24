@@ -13,7 +13,7 @@ export default function RootPage() {
           {/* Top Navigation Bar */}
           <div className="flex items-center justify-end mb-2">
             <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <Link className="hover:text-gray-900 transition-colors" href="/login">로그인</Link>
+              <Link className="hover:text-gray-900 transition-colors" href="/login">로그인(테스트)</Link>
               <Link className="hover:text-gray-900 transition-colors" href="/signup">회원가입</Link>
               <Link className="hover:text-gray-900 transition-colors" href="/plan">이용권</Link>
               <Link className="hover:text-gray-900 transition-colors" href="/support">고객센터</Link>
