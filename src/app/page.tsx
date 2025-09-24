@@ -390,7 +390,7 @@ const SERVICES: ServiceType[] = [
     id: "puzzle",
     title: "기억퍼즐",
     subtitle: "디지털 퍼즐 활동",
-    href: "/services/puzzle",
+    href: "https://puzzle-hxga.vercel.app/puzzle",   // ✅ 외부 URL로 변경
     variant: SERVICE_VARIANTS.teal,
   },
   {
