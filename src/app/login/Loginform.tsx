@@ -84,31 +84,39 @@ export default function LoginForm({ initialError = "" }: Props) {
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      {/* 고정 높이 제거: 자연 높이 + 최대 높이(뷰포트 절대 초과 금지) */}
+      {/* 로그인 카드 - 메인 페이지 스타일 적용 */}
       <div
         className={[
-          "bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden",
+          "bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden",
           "flex flex-col",
           "max-h-[92vh]",
+          "hover:shadow-xl transition-all duration-300",
         ].join(" ")}
       >
         {/* 본문: 컴팩트 모드에 따라 여백/폰트/요소 크기 축소 */}
         <div className={(compact ? "px-5 py-4" : "px-6 py-6") + " flex-1"}>
           {/* 로고 + 카피 */}
           <div className={"text-center " + (compact ? "mb-3" : "mb-5")}>
-            <img
-              src="/img/OBJECTS.png"
-              alt="DigitalNote Logo"
-              className={[
-                "mx-auto object-contain",
-                compact ? "w-12 h-12 mb-2" : "w-14 h-14 mb-3",
-              ].join(" ")}
-            />
-            <img
-              src="/img/maind.png"
-              alt="마인드"
-              className={["mx-auto object-contain", compact ? "mb-1 max-h-7" : "mb-2 max-h-9"].join(" ")}
-            />
+            {/* 브랜드 로고 - 메인 페이지와 동일한 스타일 */}
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <div className="h-12 w-12 flex items-center justify-center">
+                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
+                  <g transform="translate(24,24)">
+                    <circle cx="0" cy="0" r="3" fill="currentColor" />
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
+                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
+                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
+                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
+                  </g>
+                </svg>
+              </div>
+              <div className="text-center">
+                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
+                <p className="text-sm text-gray-600">네트워크</p>
+              </div>
+            </div>
             {/* 화면이 낮으면 설명은 더 작게 또는 숨김 */}
             {!compact ? (
               <p className="text-gray-600 text-xs leading-relaxed">
@@ -156,9 +164,9 @@ export default function LoginForm({ initialError = "" }: Props) {
                   }}
                   onBlur={() => setEmailErr(validateEmail(email))}
                   className={[
-                    "w-full rounded-lg border transition-all duration-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2",
+                    "w-full rounded-full border-2 transition-all duration-200 bg-white focus:bg-white focus:outline-none focus:ring-2",
                     compact ? "pl-10 pr-3 py-2.5 text-sm" : "pl-10 pr-3 py-3 text-sm",
-                    emailErr ? "border-red-300 focus:ring-red-100" : "border-gray-200 focus:border-purple-300 focus:ring-purple-100",
+                    emailErr ? "border-red-300 focus:ring-red-100" : "border-gray-300 focus:border-teal-400 focus:ring-teal-100",
                   ].join(" ")}
                   placeholder="your@email.com"
                   autoComplete="email"
@@ -185,9 +193,9 @@ export default function LoginForm({ initialError = "" }: Props) {
                   }}
                   onBlur={() => setPwErr(validatePw(password))}
                   className={[
-                    "w-full rounded-lg border transition-all duration-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2",
+                    "w-full rounded-full border-2 transition-all duration-200 bg-white focus:bg-white focus:outline-none focus:ring-2",
                     compact ? "pl-10 pr-10 py-2.5 text-sm" : "pl-10 pr-10 py-3 text-sm",
-                    pwErr ? "border-red-300 focus:ring-red-100" : "border-gray-200 focus:border-purple-300 focus:ring-purple-100",
+                    pwErr ? "border-red-300 focus:ring-red-100" : "border-gray-300 focus:border-teal-400 focus:ring-teal-100",
                   ].join(" ")}
                   placeholder="••••••••"
                   autoComplete="current-password"
@@ -214,8 +222,8 @@ export default function LoginForm({ initialError = "" }: Props) {
                 type="submit"
                 disabled={!formValid}
                 className={[
-                  "w-full text-white text-sm font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200",
-                  "bg-gradient-to-r from-purple-500 to-blue-500",
+                  "w-full text-white text-sm font-medium rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200",
+                  "bg-gradient-to-r from-teal-400 to-teal-600",
                   compact ? "py-2.5 px-4" : "py-3 px-5",
                   "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-lg",
                   "flex items-center justify-center group",
@@ -239,7 +247,7 @@ export default function LoginForm({ initialError = "" }: Props) {
             <Link
               href="/signup"
               className={[
-                "block w-full text-center border border-gray-200 text-gray-700 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all duration-200",
+                "block w-full text-center border-2 border-gray-300 text-gray-700 rounded-full hover:border-teal-400 hover:bg-teal-50 transition-all duration-200",
                 compact ? "py-2.5 px-4 text-sm" : "py-3 px-5 text-sm",
               ].join(" ")}
             >
@@ -264,17 +272,17 @@ export default function LoginForm({ initialError = "" }: Props) {
             <p className={compact ? "text-center text-[11px] font-medium text-gray-700 mb-1" : "text-center text-xs font-medium text-gray-700 mb-1.5"}>
               간편 로그인
             </p>
-            <div className="grid grid-cols-4 gap-2">
-              <a href="/api/auth/kakao/start" aria-label="카카오로 로그인" className="flex items-center justify-center py-2 px-2 border border-gray-200 rounded-lg hover:border-yellow-300 hover:bg-yellow-50 transition-all duration-200 text-sm">
-                <span className="w-4 h-4 bg-yellow-400 rounded" />
+            <div className="grid grid-cols-3 gap-2">
+              <a href="/api/auth/kakao/start" aria-label="카카오로 로그인" className="flex items-center justify-center py-2 px-2 border-2 border-gray-300 rounded-full hover:border-yellow-400 hover:bg-yellow-50 transition-all duration-200 text-sm">
+                <span className="w-4 h-4 bg-yellow-400 rounded-full" />
                 {!compact && <span className="ml-1">카카오</span>}
               </a>
-              <a href="/api/auth/naver/start" aria-label="네이버로 로그인" className="flex items-center justify-center py-2 px-2 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-all duration-200 text-sm">
-                <span className="w-4 h-4 bg-green-500 rounded" />
+              <a href="/api/auth/naver/start" aria-label="네이버로 로그인" className="flex items-center justify-center py-2 px-2 border-2 border-gray-300 rounded-full hover:border-green-400 hover:bg-green-50 transition-all duration-200 text-sm">
+                <span className="w-4 h-4 bg-green-500 rounded-full" />
                 {!compact && <span className="ml-1">네이버</span>}
               </a>
-              <a href="/api/auth/google/start" aria-label="구글로 로그인" className="flex items-center justify-center py-2 px-2 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 text-sm">
-                <span className="w-4 h-4 bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 rounded" />
+              <a href="/api/auth/google/start" aria-label="구글로 로그인" className="flex items-center justify-center py-2 px-2 border-2 border-gray-300 rounded-full hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-sm">
+                <span className="w-4 h-4 bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 rounded-full" />
                 {!compact && <span className="ml-1">구글</span>}
               </a>
             </div>
@@ -288,7 +296,7 @@ export default function LoginForm({ initialError = "" }: Props) {
               <Home className="w-3.5 h-3.5 mr-1 group-hover:-translate-x-0.5 transition-transform" />
               홈으로
             </Link>
-            <span className="font-semibold text-gray-600">DigitalNote</span>
+            <span className="font-semibold text-gray-600">그레이트 시니어</span>
           </div>
         </div>
       </div>

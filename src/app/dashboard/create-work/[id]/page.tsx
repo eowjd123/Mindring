@@ -3,32 +3,66 @@
 
 import {
   AlignCenter,
+  AlignJustify,
   AlignLeft,
   AlignRight,
   Bold,
   CheckCircle,
   ChevronDown,
-  ChevronUp,
   Eye,
   FileText,
-  FlipHorizontal,
-  FlipVertical,
-  Grid,
-  GripVertical,
   Image as ImageIcon,
   Italic,
   Layout,
+  Link,
   Plus,
-  RotateCcw,
-  RotateCw,
   Save,
+  Strikethrough,
   Trash2,
   Type,
+  Underline,
   Upload,
   X,
 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+
+// 링크가 포함된 텍스트를 렌더링하는 함수
+const renderTextWithLinks = (content: string, links: { start: number; end: number; url: string; text: string }[] = []) => {
+  if (!links.length) return content;
+  
+  const parts = [];
+  let lastIndex = 0;
+  
+  links.forEach((link, index) => {
+    // 링크 앞의 텍스트
+    if (link.start > lastIndex) {
+      parts.push(content.slice(lastIndex, link.start));
+    }
+    
+    // 링크 텍스트
+    parts.push(
+      <a
+        key={index}
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline hover:text-blue-800"
+      >
+        {link.text}
+      </a>
+    );
+    
+    lastIndex = link.end;
+  });
+  
+  // 마지막 링크 뒤의 텍스트
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+  
+  return parts;
+};
 
 /* =========================
    Domain Types
@@ -42,9 +76,10 @@ interface BaseTemplateElement {
     fontSize?: number;
     fontFamily?: string;
     color?: string;
-    textAlign?: "left" | "center" | "right";
+    textAlign?: "left" | "center" | "right" | "justify";
     fontWeight?: "normal" | "bold";
     fontStyle?: "normal" | "italic";
+    textDecoration?: "none" | "underline" | "line-through";
     backgroundColor?: string;
     border?: string;
     borderRadius?: number;
@@ -55,6 +90,7 @@ interface TextElement extends BaseTemplateElement {
   type: "text";
   content?: string;
   placeholder?: string;
+  links?: { start: number; end: number; url: string; text: string }[];
 }
 
 interface ImageElement extends BaseTemplateElement {
@@ -184,7 +220,7 @@ function normalizePageType(type: string): PageType {
 }
 
 // Helper functions for cover generation
-async function generateCoverFromTemplate(page: Page): Promise<string> {
+async function _generateCoverFromTemplate(_page: Page): Promise<string> {
   // 실제 구현에서는 HTML Canvas를 사용하여 템플릿을 이미지로 렌더링
   // 여기서는 placeholder 구현
   return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
@@ -258,6 +294,22 @@ async function generateDefaultCover(title: string): Promise<string> {
    Template Data
    ========================= */
 
+// 폰트 크기 옵션
+const BODY_FONT_SIZES = [10, 11, 12]; // 본문 폰트 크기 (pt)
+const TITLE_FONT_SIZES = [50, 55, 60, 65, 70]; // 표기 폰트 크기 (pt)
+
+// 폰트 패밀리 옵션
+const FONT_FAMILIES = [
+  { name: "나눔고딕", value: "Nanum Gothic" },
+  { name: "맑은 고딕", value: "Malgun Gothic" },
+  { name: "돋움", value: "Dotum" },
+  { name: "굴림", value: "Gulim" },
+  { name: "바탕", value: "Batang" },
+  { name: "궁서", value: "Gungsuh" },
+  { name: "Arial", value: "Arial" },
+  { name: "Times New Roman", value: "Times New Roman" },
+];
+
 const COVER_TEMPLATES: Template[] = [
   {
     id: "cover-blank",
@@ -280,7 +332,7 @@ const COVER_TEMPLATES: Template[] = [
         {
           id: "title",
           type: "text",
-          position: { x: 20, y: 40, width: 260, height: 60 },
+          position: { x: 20, y: 65, width: 260, height: 60 },
           style: { fontSize: 28, fontWeight: "bold", textAlign: "center", color: "#333333" },
           content: "나의 이야기",
           placeholder: "제목을 입력하세요",
@@ -288,7 +340,7 @@ const COVER_TEMPLATES: Template[] = [
         {
           id: "subtitle",
           type: "text",
-          position: { x: 20, y: 120, width: 260, height: 40 },
+          position: { x: 20, y: 145, width: 260, height: 40 },
           style: { fontSize: 16, textAlign: "center", color: "#666666" },
           content: "소중한 추억들",
           placeholder: "부제목을 입력하세요",
@@ -296,7 +348,7 @@ const COVER_TEMPLATES: Template[] = [
         {
           id: "author",
           type: "text",
-          position: { x: 20, y: 340, width: 260, height: 30 },
+          position: { x: 20, y: 365, width: 260, height: 30 },
           style: { fontSize: 14, textAlign: "center", color: "#888888" },
           content: "작성자명",
           placeholder: "작성자를 입력하세요",
@@ -316,7 +368,7 @@ const COVER_TEMPLATES: Template[] = [
         {
           id: "title",
           type: "text",
-          position: { x: 20, y: 20, width: 260, height: 40 },
+          position: { x: 20, y: 45, width: 260, height: 40 },
           style: { fontSize: 20, fontWeight: "bold", textAlign: "center", color: "#333333" },
           content: "제목을 입력해 주세요",
           placeholder: "제목을 입력하세요",
@@ -324,14 +376,14 @@ const COVER_TEMPLATES: Template[] = [
         {
           id: "main-image",
           type: "placeholder",
-          position: { x: 20, y: 80, width: 260, height: 200 },
+          position: { x: 20, y: 105, width: 260, height: 200 },
           style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
           placeholder: "사진을 드래그하여 여기에 추가해 주세요",
         } as PlaceholderElement,
         {
           id: "description",
           type: "text",
-          position: { x: 20, y: 300, width: 260, height: 80 },
+          position: { x: 20, y: 325, width: 260, height: 80 },
           style: { fontSize: 14, textAlign: "left", color: "#555555" },
           content: "텍스트를 입력해 주세요",
           placeholder: "설명을 입력하세요",
@@ -348,24 +400,16 @@ const PAGE_TEMPLATES: Template[] = [
     category: "text",
     name: "텍스트 페이지",
     thumbnail: "/templates/page-text.png",
-    description: "긴 텍스트 작성에 적합한 레이아웃",
+    description: "내용 입력 전용 레이아웃",
     layout: {
       elements: [
         {
-          id: "title",
-          type: "text",
-          position: { x: 20, y: 20, width: 260, height: 40 },
-          style: { fontSize: 18, fontWeight: "bold", color: "#333333" },
-          content: "텍스트를 입력해 주세요",
-          placeholder: "제목을 입력하세요",
-        } as TextElement,
-        {
           id: "content",
           type: "text",
-          position: { x: 20, y: 80, width: 260, height: 300 },
+          position: { x: 30, y: 45, width: 240, height: 360 },
           style: { fontSize: 14, color: "#555555", textAlign: "left" },
           content: "내용을 입력해 주세요",
-          placeholder: "본문을 입력하세요",
+          placeholder: "내용을 입력하세요",
         } as TextElement,
       ],
     },
@@ -382,7 +426,7 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "top-text",
           type: "text",
-          position: { x: 20, y: 20, width: 260, height: 40 },
+          position: { x: 20, y: 45, width: 260, height: 40 },
           style: { fontSize: 14, textAlign: "center", color: "#555555" },
           content: "텍스트를 입력해 주세요",
           placeholder: "상단 텍스트를 입력하세요",
@@ -390,14 +434,14 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "center-image",
           type: "placeholder",
-          position: { x: 20, y: 80, width: 260, height: 200 },
+          position: { x: 20, y: 105, width: 260, height: 200 },
           style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
           placeholder: "사진을 드래그하여 여기에 추가해 주세요",
         } as PlaceholderElement,
         {
           id: "bottom-text",
           type: "text",
-          position: { x: 20, y: 300, width: 260, height: 80 },
+          position: { x: 20, y: 325, width: 260, height: 80 },
           style: { fontSize: 14, textAlign: "center", color: "#555555" },
           content: "텍스트를 입력해 주세요",
           placeholder: "하단 텍스트를 입력하세요",
@@ -417,7 +461,7 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "title",
           type: "text",
-          position: { x: 20, y: 20, width: 260, height: 30 },
+          position: { x: 20, y: 45, width: 260, height: 30 },
           style: { fontSize: 16, fontWeight: "bold", color: "#333333" },
           content: "텍스트를 입력해 주세요",
           placeholder: "제목을 입력하세요",
@@ -425,14 +469,14 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "image",
           type: "placeholder",
-          position: { x: 20, y: 60, width: 260, height: 180 },
+          position: { x: 20, y: 85, width: 260, height: 180 },
           style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
           placeholder: "사진을 드래그하여 여기에 추가해 주세요",
         } as PlaceholderElement,
         {
           id: "text",
           type: "text",
-          position: { x: 20, y: 260, width: 260, height: 120 },
+          position: { x: 20, y: 285, width: 260, height: 120 },
           style: { fontSize: 12, color: "#555555" },
           content: "텍스트를 입력해 주세요",
           placeholder: "설명을 입력하세요",
@@ -449,11 +493,11 @@ const PAGE_TEMPLATES: Template[] = [
     description: "여러 사진을 배치할 수 있는 갤러리",
     layout: {
       elements: [
-        { id: "image1", type: "placeholder", position: { x: 20, y: 20, width: 120, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
-        { id: "image2", type: "placeholder", position: { x: 160, y: 20, width: 120, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
-        { id: "image3", type: "placeholder", position: { x: 20, y: 130, width: 120, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
-        { id: "image4", type: "placeholder", position: { x: 160, y: 130, width: 120, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
-        { id: "caption", type: "text", position: { x: 20, y: 240, width: 260, height: 140 }, style: { fontSize: 12, color: "#555555" }, content: "텍스트를 입력해 주세요", placeholder: "사진에 대한 설명을 입력하세요" } as TextElement,
+        { id: "image1", type: "placeholder", position: { x: 20, y: 45, width: 120, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
+        { id: "image2", type: "placeholder", position: { x: 160, y: 45, width: 100, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
+        { id: "image3", type: "placeholder", position: { x: 20, y: 155, width: 120, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
+        { id: "image4", type: "placeholder", position: { x: 160, y: 155, width: 100, height: 90 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
+        { id: "caption", type: "text", position: { x: 20, y: 265, width: 260, height: 140 }, style: { fontSize: 12, color: "#555555" }, content: "텍스트를 입력해 주세요", placeholder: "사진에 대한 설명을 입력하세요" } as TextElement,
       ],
     },
   },
@@ -466,10 +510,310 @@ const PAGE_TEMPLATES: Template[] = [
     description: "다양한 요소가 조합된 자유 레이아웃",
     layout: {
       elements: [
-        { id: "left-image", type: "placeholder", position: { x: 20, y: 20, width: 120, height: 160 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
-        { id: "right-text", type: "text", position: { x: 160, y: 20, width: 120, height: 80 }, style: { fontSize: 12, color: "#555555" }, content: "사진을 드래그하여 여기에 추가해 주세요", placeholder: "텍스트를 입력하세요" } as TextElement,
-        { id: "right-image", type: "placeholder", position: { x: 160, y: 120, width: 120, height: 60 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
-        { id: "bottom-text", type: "text", position: { x: 20, y: 200, width: 260, height: 180 }, style: { fontSize: 12, color: "#555555" }, content: "텍스트를 입력해 주세요", placeholder: "상세한 설명을 입력하세요" } as TextElement,
+        { id: "left-image", type: "placeholder", position: { x: 20, y: 45, width: 120, height: 160 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
+        { id: "right-text", type: "text", position: { x: 160, y: 45, width: 100, height: 80 }, style: { fontSize: 12, color: "#555555" }, content: "사진을 드래그하여 여기에 추가해 주세요", placeholder: "텍스트를 입력하세요" } as TextElement,
+        { id: "right-image", type: "placeholder", position: { x: 160, y: 145, width: 100, height: 60 }, style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 4 }, placeholder: "사진을 드래그하여 여기에 추가해 주세요" } as PlaceholderElement,
+        { id: "bottom-text", type: "text", position: { x: 20, y: 475, width: 260, height: 180 }, style: { fontSize: 12, color: "#555555" }, content: "텍스트를 입력해 주세요", placeholder: "상세한 설명을 입력하세요" } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-triple-image-text",
+    type: "page",
+    category: "mixed",
+    name: "3이미지+텍스트",
+    thumbnail: "/templates/page-triple-image.png",
+    description: "3개 이미지 영역과 텍스트 영역",
+    layout: {
+      elements: [
+        {
+          id: "top-left-image",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 130, height: 100 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "top-right-image",
+          type: "placeholder",
+          position: { x: 170, y: 45, width: 110, height: 100 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "bottom-image",
+          type: "placeholder",
+          position: { x: 20, y: 165, width: 280, height: 120 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "text-area",
+          type: "text",
+          position: { x: 30, y: 305, width: 240, height: 100 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "텍스트를 입력해 주세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-double-image-text",
+    type: "page",
+    category: "mixed",
+    name: "2이미지+텍스트",
+    thumbnail: "/templates/page-double-image.png",
+    description: "2개 이미지 영역과 텍스트 영역",
+    layout: {
+      elements: [
+        {
+          id: "left-image",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 130, height: 200 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "right-image",
+          type: "placeholder",
+          position: { x: 170, y: 45, width: 110, height: 200 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "text-area",
+          type: "text",
+          position: { x: 30, y: 265, width: 240, height: 140 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "텍스트를 입력해 주세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-single-image-text",
+    type: "page",
+    category: "mixed",
+    name: "1이미지+텍스트",
+    thumbnail: "/templates/page-single-image.png",
+    description: "1개 이미지 영역과 텍스트 영역",
+    layout: {
+      elements: [
+        {
+          id: "image",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 280, height: 180 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "text-area",
+          type: "text",
+          position: { x: 30, y: 245, width: 240, height: 160 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "텍스트를 입력해 주세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-text-centered",
+    type: "page",
+    category: "text",
+    name: "중앙 정렬 텍스트",
+    thumbnail: "/templates/page-text-centered.png",
+    description: "중앙 정렬된 텍스트 레이아웃",
+    layout: {
+      elements: [
+        {
+          id: "title",
+          type: "text",
+          position: { x: 20, y: 75, width: 280, height: 50 },
+          style: { fontSize: 20, fontWeight: "bold", color: "#333333", textAlign: "center" },
+          content: "제목을 입력해 주세요",
+          placeholder: "제목을 입력하세요",
+        } as TextElement,
+        {
+          id: "content",
+          type: "text",
+          position: { x: 30, y: 145, width: 240, height: 260 },
+          style: { fontSize: 14, color: "#555555", textAlign: "center" },
+          content: "내용을 입력해 주세요",
+          placeholder: "본문을 입력하세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-image-gallery",
+    type: "page",
+    category: "image",
+    name: "이미지 갤러리",
+    thumbnail: "/templates/page-gallery.png",
+    description: "4개 이미지 갤러리 레이아웃",
+    layout: {
+      elements: [
+        {
+          id: "image-1",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 130, height: 130 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "image-2",
+          type: "placeholder",
+          position: { x: 170, y: 45, width: 110, height: 130 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "image-3",
+          type: "placeholder",
+          position: { x: 20, y: 195, width: 130, height: 130 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "image-4",
+          type: "placeholder",
+          position: { x: 170, y: 195, width: 110, height: 130 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+      ],
+    },
+  },
+  {
+    id: "page-vertical-double-image-text",
+    type: "page",
+    category: "mixed",
+    name: "세로 2이미지+텍스트",
+    thumbnail: "/templates/page-vertical-double.png",
+    description: "상단 2개 세로 이미지와 하단 텍스트 영역",
+    layout: {
+      elements: [
+        {
+          id: "top-image-1",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 280, height: 120 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "top-image-2",
+          type: "placeholder",
+          position: { x: 20, y: 185, width: 280, height: 120 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "text-area",
+          type: "text",
+          position: { x: 30, y: 325, width: 240, height: 80 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "텍스트를 입력해 주세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-horizontal-double-image-text",
+    type: "page",
+    category: "mixed",
+    name: "가로 2이미지+텍스트",
+    thumbnail: "/templates/page-horizontal-double.png",
+    description: "상단 2개 가로 이미지와 하단 텍스트 영역",
+    layout: {
+      elements: [
+        {
+          id: "left-image",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 130, height: 120 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "right-image",
+          type: "placeholder",
+          position: { x: 170, y: 45, width: 110, height: 120 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "text-area",
+          type: "text",
+          position: { x: 30, y: 185, width: 240, height: 200 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "텍스트를 입력해 주세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-large-image-small-text",
+    type: "page",
+    category: "mixed",
+    name: "큰 이미지+작은 텍스트",
+    thumbnail: "/templates/page-large-image.png",
+    description: "큰 이미지 영역과 작은 텍스트 영역",
+    layout: {
+      elements: [
+        {
+          id: "large-image",
+          type: "placeholder",
+          position: { x: 20, y: 45, width: 280, height: 280 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "small-text",
+          type: "text",
+          position: { x: 30, y: 345, width: 240, height: 60 },
+          style: { fontSize: 12, color: "#555555", textAlign: "center" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "텍스트를 입력해 주세요",
+        } as TextElement,
+      ],
+    },
+  },
+  {
+    id: "page-text-image-text",
+    type: "page",
+    category: "mixed",
+    name: "텍스트-이미지-텍스트",
+    thumbnail: "/templates/page-text-image-text.png",
+    description: "텍스트, 이미지, 텍스트 순서의 레이아웃",
+    layout: {
+      elements: [
+        {
+          id: "top-text",
+          type: "text",
+          position: { x: 30, y: 45, width: 240, height: 80 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "상단 텍스트를 입력하세요",
+        } as TextElement,
+        {
+          id: "center-image",
+          type: "placeholder",
+          position: { x: 20, y: 145, width: 280, height: 180 },
+          style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
+          placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
+        } as PlaceholderElement,
+        {
+          id: "bottom-text",
+          type: "text",
+          position: { x: 30, y: 345, width: 240, height: 60 },
+          style: { fontSize: 14, color: "#555555", textAlign: "left" },
+          content: "텍스트를 입력해 주세요",
+          placeholder: "하단 텍스트를 입력하세요",
+        } as TextElement,
       ],
     },
   },
@@ -481,20 +825,20 @@ const PAGE_TEMPLATES: Template[] = [
 
 interface EditablePageViewProps {
   page: Page;
-  onUpdateElement: (elementId: string, content: string) => void;
-  onUpdateElementImage: (elementId: string, imageUrl: string) => void;
-  onSelectElement: (elementId: string) => void;
+  onUpdateElement: (_elementId: string, _content: string) => void;
+  onUpdateElementImage: (_elementId: string, _imageUrl: string) => void;
+  onSelectElement: (_elementId: string) => void;
   selectedElementId: string | null;
   fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
-function EditablePageView({ page, onUpdateElement, onUpdateElementImage, onSelectElement, selectedElementId, fileInputRef }: EditablePageViewProps) {
+function EditablePageView({ page, onUpdateElement: _onUpdateElement, onUpdateElementImage: _onUpdateElementImage, onSelectElement, selectedElementId, fileInputRef }: EditablePageViewProps) {
   if (!page.content.elements || page.content.elements.length === 0) {
     return <PagePreview page={page} />;
   }
 
-  const handleImageUpload = (elementId: string) => {
-    onSelectElement(elementId);
+  const handleImageUpload = (_elementId: string) => {
+    onSelectElement(_elementId);
     fileInputRef.current?.click();
   };
 
@@ -506,9 +850,9 @@ function EditablePageView({ page, onUpdateElement, onUpdateElementImage, onSelec
           className={`absolute cursor-pointer group ${selectedElementId === element.id ? "ring-2 ring-blue-500 bg-blue-50" : "hover:ring-1 hover:ring-gray-300"}`}
           style={{
             left: `${(element.position.x / 300) * 100}%`,
-            top: `${(element.position.y / 400) * 100}%`,
+              top: `${(element.position.y / 450) * 100}%`,
             width: `${(element.position.width / 300) * 100}%`,
-            height: `${(element.position.height / 400) * 100}%`,
+              height: `${(element.position.height / 450) * 100}%`,
             minHeight: '20px',
             minWidth: '20px',
           }}
@@ -523,15 +867,17 @@ function EditablePageView({ page, onUpdateElement, onUpdateElementImage, onSelec
                 <>
                   <textarea
                     value={element.content ?? ""}
-                    onChange={(e) => onUpdateElement(element.id, e.target.value)}
+                    onChange={(e) => _onUpdateElement(element.id, e.target.value)}
                     placeholder={element.placeholder || "텍스트를 입력하세요"}
                     className="w-full h-full bg-transparent border border-blue-300 outline-none resize-none text-xs leading-tight p-1"
                     style={{
+                      fontFamily: element.style.fontFamily || "inherit",
                       fontSize: element.style.fontSize ? `${Math.min(element.style.fontSize, 14)}px` : "12px",
                       color: element.style.color || "#333",
                       textAlign: element.style.textAlign || "left",
                       fontWeight: element.style.fontWeight || "normal",
                       fontStyle: element.style.fontStyle || "normal",
+                      textDecoration: element.style.textDecoration || "none",
                     }}
                     autoFocus
                   />
@@ -544,15 +890,17 @@ function EditablePageView({ page, onUpdateElement, onUpdateElementImage, onSelec
                   <div
                     className="w-full h-full flex items-start text-gray-800 leading-tight overflow-hidden p-1 bg-white border border-dashed border-gray-300"
                     style={{
+                      fontFamily: element.style.fontFamily || "inherit",
                       fontSize: element.style.fontSize ? `${Math.min(element.style.fontSize, 14)}px` : "12px",
                       color: element.style.color || "#333",
                       textAlign: element.style.textAlign || "left",
                       fontWeight: element.style.fontWeight || "normal",
                       fontStyle: element.style.fontStyle || "normal",
+                      textDecoration: element.style.textDecoration || "none",
                     }}
                   >
                     <span className="block">
-                      {element.content || element.placeholder || "텍스트를 입력하세요"}
+                      {renderTextWithLinks(element.content || element.placeholder || "텍스트를 입력하세요", element.links)}
                     </span>
                   </div>
                   <div className="absolute -top-6 left-0 bg-gray-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
@@ -581,7 +929,7 @@ function EditablePageView({ page, onUpdateElement, onUpdateElementImage, onSelec
 
           {element.type === "image" && (
             <div className="w-full h-full relative">
-              <img src={element.content} alt="Page element" className="w-full h-full object-cover rounded" />
+              <img src={element.content} alt="Page element" className="w-full h-full object-contain rounded" />
               <button
                 type="button"
                 className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center"
@@ -613,14 +961,24 @@ function TemplatePreview({ template }: TemplatePreviewProps) {
           className="absolute"
           style={{
             left: `${(element.position.x / 300) * 100}%`,
-            top: `${(element.position.y / 400) * 100}%`,
+            top: `${(element.position.y / 450) * 100}%`,
             width: `${(element.position.width / 300) * 100}%`,
-            height: `${(element.position.height / 400) * 100}%`,
+            height: `${(element.position.height / 450) * 100}%`,
             fontSize: element.style.fontSize ? `${(element.style.fontSize ?? 6) / 4}px` : "6px",
           }}
         >
           {element.type === "text" && (
-            <div className="w-full h-full flex items-center text-gray-800 leading-tight">
+            <div 
+              className="w-full h-full flex items-center leading-tight"
+              style={{
+                fontFamily: element.style.fontFamily || "inherit",
+                fontWeight: element.style.fontWeight || "normal",
+                fontStyle: element.style.fontStyle || "normal",
+                textAlign: element.style.textAlign || "left",
+                color: element.style.color || "#374151",
+                textDecoration: element.style.textDecoration || "none",
+              }}
+            >
               {element.content ?? element.placeholder}
             </div>
           )}
@@ -630,7 +988,7 @@ function TemplatePreview({ template }: TemplatePreviewProps) {
             </div>
           )}
           {element.type === "image" && (
-            <img src={element.content} alt="Template element" className="w-full h-full object-cover" />
+            <img src={element.content} alt="Template element" className="w-full h-full object-contain" />
           )}
         </div>
       ))}
@@ -650,9 +1008,9 @@ function PagePreview({ page }: PagePreviewProps) {
             className="absolute"
             style={{
               left: `${(element.position.x / 300) * 100}%`,
-              top: `${(element.position.y / 400) * 100}%`,
+              top: `${(element.position.y / 450) * 100}%`,
               width: `${(element.position.width / 300) * 100}%`,
-              height: `${(element.position.height / 400) * 100}%`,
+              height: `${(element.position.height / 450) * 100}%`,
               fontSize: element.style.fontSize ? `${Math.min(element.style.fontSize, 12)}px` : "10px",
               minHeight: '20px',
               minWidth: '20px',
@@ -662,14 +1020,16 @@ function PagePreview({ page }: PagePreviewProps) {
               <div
                 className="w-full h-full flex items-start text-gray-800 leading-tight overflow-hidden p-1"
                 style={{
+                  fontFamily: element.style.fontFamily || "inherit",
                   color: element.style.color || "#333",
                   textAlign: element.style.textAlign || "left",
                   fontWeight: element.style.fontWeight || "normal",
                   fontStyle: element.style.fontStyle || "normal",
+                  textDecoration: element.style.textDecoration || "none",
                 }}
               >
                 <span className="block text-xs">
-                  {element.content || element.placeholder || "텍스트를 입력하세요"}
+                  {renderTextWithLinks(element.content || element.placeholder || "텍스트를 입력하세요", element.links)}
                 </span>
               </div>
             )}
@@ -682,7 +1042,7 @@ function PagePreview({ page }: PagePreviewProps) {
               </div>
             )}
             {element.type === "image" && (
-              <img src={element.content} alt="Page element" className="w-full h-full object-cover rounded" />
+              <img src={element.content} alt="Page element" className="w-full h-full object-contain rounded" />
             )}
           </div>
         ))}
@@ -762,6 +1122,9 @@ export default function CreateWorkPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -769,6 +1132,44 @@ export default function CreateWorkPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedPage = useMemo(() => work.pages.find((p) => p.id === selectedPageId) ?? null, [work.pages, selectedPageId]);
+
+  // 링크 추가 함수
+  const addLink = () => {
+    if (!linkUrl.trim() || !linkText.trim() || !selectedPage) return;
+    
+    const selectedElement = selectedPage.content.elements?.find(el => el.id === selectedElementId);
+    if (selectedElement && selectedElement.type === 'text') {
+      const currentContent = selectedElement.content || "";
+      const linkStart = currentContent.length;
+      const linkEnd = linkStart + linkText.length;
+      
+      const newContent = currentContent + linkText;
+      const newLinks = [
+        ...(selectedElement.links || []),
+        { start: linkStart, end: linkEnd, url: linkUrl, text: linkText }
+      ];
+      
+      const updatedElements = selectedPage.content.elements?.map(el => 
+        el.id === selectedElementId 
+          ? { ...el, content: newContent, links: newLinks }
+          : el
+      );
+      
+      setWork((prev) => ({
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.id === selectedPage.id
+            ? { ...page, content: { ...page.content, elements: updatedElements || [] } }
+            : page
+        ),
+        updatedAt: new Date(),
+      }));
+      
+      setLinkUrl("");
+      setLinkText("");
+      setShowLinkDialog(false);
+    }
+  };
 
   /* ---------- Load Work Data ---------- */
   useEffect(() => {
@@ -935,25 +1336,6 @@ export default function CreateWorkPage() {
     }));
   };
 
-  /* ---------- File Upload ---------- */
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setSaveError("이미지 파일만 업로드 가능합니다.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event: ProgressEvent<FileReader>) => {
-      const result = event.target?.result;
-      if (typeof result === "string" && result.startsWith("data:") && selectedPageId && selectedElementId) {
-        updateElementImage(selectedPageId, selectedElementId, result);
-        setSelectedElementId(null);
-      }
-    };
-    reader.readAsDataURL(file);
-    e.currentTarget.value = "";
-  };
 
   /* ---------- Page Management ---------- */
   const requestDeletePage = (pageId: string) => setPendingDeleteId(pageId);
@@ -1133,12 +1515,40 @@ const completeWork = async (): Promise<string | null> => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Header - Main page style */}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <div className="flex items-center justify-end mb-2">
+            <nav className="flex items-center gap-6 text-sm text-gray-600">
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/books">라이브러리</a>
+              <a className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</a>
+            </nav>
+          </div>
+          <div className="flex items-center justify-between gap-8">
+            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
+              <div className="h-12 w-12 flex items-center justify-center">
+                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
+                  <g transform="translate(24,24)">
+                    <circle cx="0" cy="0" r="3" fill="currentColor" />
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
+                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
+                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
+                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
+                  </g>
+                </svg>
+              </div>
+              <div className="text-center">
+                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
+                <p className="text-sm text-gray-600">네트워크</p>
+              </div>
+            </div>
+            <div className="flex-1 text-center">
               <input
                 type="text"
                 value={work.title}
@@ -1149,25 +1559,24 @@ const completeWork = async (): Promise<string | null> => {
                     updatedAt: new Date(),
                   }))
                 }
-                className="text-2xl font-bold bg-transparent border-none outline-none focus:bg-white focus:px-2 focus:rounded"
+                className="text-2xl font-bold bg-transparent border-none outline-none text-center focus:bg-white focus:px-4 focus:rounded-2xl focus:border-2 focus:border-teal-300 transition-all"
                 placeholder="작품 제목을 입력하세요"
               />
             </div>
-
             <div className="flex items-center space-x-3">
               <button
                 onClick={previewWork}
-                className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                 disabled={isSaving}
               >
                 <Eye className="mr-2 h-4 w-4" />
-                {isSaving ? "저장 중..." : "저장 후 미리보기"}
+                {isSaving ? "저장 중..." : "미리보기"}
               </button>
               
               <button
                 onClick={saveAndContinue}
                 disabled={isSaving}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-teal-400 to-teal-600 text-white rounded-full hover:from-teal-500 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {isSaving ? "저장 중..." : "저장"}
@@ -1176,7 +1585,7 @@ const completeWork = async (): Promise<string | null> => {
               <button
                 onClick={completeWork}
                 disabled={isSaving || work.pages.length === 0}
-                className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg hover:shadow-xl"
+                className="flex items-center px-6 py-2 bg-gradient-to-r from-green-400 to-green-600 text-white rounded-full hover:from-green-500 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
                 title={work.pages.length === 0 ? "페이지를 추가한 후 완료할 수 있습니다" : "작품을 완료하고 라이브러리에 추가"}
               >
                 <CheckCircle className="mr-2 h-4 w-4" />
@@ -1186,119 +1595,420 @@ const completeWork = async (): Promise<string | null> => {
           </div>
 
           {saveError && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm" role="alert">
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-3xl text-red-600 text-sm shadow-lg" role="alert">
               {saveError}
             </div>
           )}
           {saveMessage && (
-            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-sm" role="status">
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-3xl text-green-700 text-sm shadow-lg" role="status">
               {saveMessage}
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Body */}
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-3 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
           {/* Left Sidebar - Templates */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-1 space-y-3">
             {/* Cover Templates */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-sm font-semibold mb-3 flex items-center">
-                <FileText className="mr-2 h-4 w-4" />
-                표지 템플릿
-              </h3>
-              <div className="grid grid-cols-1 gap-2">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 p-3">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 bg-gradient-to-r from-teal-400 to-teal-600 rounded-full flex items-center justify-center">
+                  <FileText className="h-3 w-3 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">표지 템플릿</h3>
+                  <p className="text-xs text-gray-600">클릭하여 추가</p>
+                </div>
+              </div>
+              
+              {/* 표지 템플릿을 2열로 배치하여 스크롤 제거 */}
+              <div className="grid grid-cols-2 gap-2">
                 {COVER_TEMPLATES.map((template) => (
                   <button
                     key={template.id}
                     onClick={() => applyTemplate(template)}
-                    className="group relative aspect-[3/4] bg-gray-100 rounded-md overflow-hidden border border-transparent hover:border-blue-500 transition-all"
+                    className="group relative bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-teal-400 transition-all duration-200 hover:shadow-lg p-1"
                     type="button"
                   >
-                    <div className="w-full h-full bg-white p-1">
+                    {/* 템플릿 미리보기 영역 */}
+                    <div className="aspect-[3/4] bg-white rounded-lg mb-1 overflow-hidden">
+                      <div className="w-full h-full">
                       <TemplatePreview template={template} />
                     </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all" />
-                    <div className="absolute bottom-1 left-1 right-1">
-                      <div className="bg-white/90 rounded px-1 py-0.5">
-                        <p className="text-xs font-medium truncate">{template.name}</p>
                       </div>
+                    
+                    {/* 템플릿 정보 */}
+                    <div className="text-center">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{template.name}</p>
                     </div>
+                    
+                    {/* 호버 오버레이 */}
+                    <div className="absolute inset-0 bg-teal-500/0 group-hover:bg-teal-500/10 transition-all rounded-xl" />
                   </button>
                 ))}
+              </div>
+              
+              {/* 추가 안내 텍스트 */}
+              <div className="mt-2 p-1.5 bg-teal-50 rounded-lg border border-teal-200">
+                <p className="text-xs text-teal-700 text-center">
+                  💡 클릭하여 추가
+                </p>
               </div>
             </div>
 
             {/* Page Templates */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-sm font-semibold mb-3 flex items-center">
-                <Layout className="mr-2 h-4 w-4" />
-                내지 템플릿
-              </h3>
-              <div className="grid grid-cols-1 gap-2">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 p-3">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
+                  <Layout className="h-3 w-3 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">내지 템플릿</h3>
+                  <p className="text-xs text-gray-600">클릭하여 추가</p>
+                </div>
+              </div>
+              
+              {/* 내지 템플릿을 2열로 배치하여 스크롤 제거 */}
+              <div className="grid grid-cols-2 gap-2">
                 {PAGE_TEMPLATES.map((template) => (
                   <button
                     key={template.id}
                     onClick={() => applyTemplate(template)}
-                    className="group relative aspect-[3/4] bg-gray-100 rounded-md overflow-hidden border border-transparent hover:border-green-500 transition-all"
+                    className="group relative bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-400 transition-all duration-200 hover:shadow-lg p-1"
                     type="button"
                   >
-                    <div className="w-full h-full bg-white p-1">
+                    {/* 템플릿 미리보기 영역 */}
+                    <div className="aspect-[3/4] bg-white rounded-lg mb-1 overflow-hidden">
+                      <div className="w-full h-full">
                       <TemplatePreview template={template} />
                     </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all" />
-                    <div className="absolute bottom-1 left-1 right-1">
-                      <div className="bg-white/90 rounded px-1 py-0.5">
-                        <p className="text-xs font-medium truncate">{template.name}</p>
                       </div>
+                    
+                    {/* 템플릿 정보 */}
+                    <div className="text-center">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{template.name}</p>
                     </div>
+                    
+                    {/* 호버 오버레이 */}
+                    <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-all rounded-xl" />
                   </button>
                 ))}
               </div>
+              
+              {/* 추가 안내 텍스트 */}
+              <div className="mt-2 p-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700 text-center">
+                  💡 클릭하여 추가
+                </p>
+              </div>
             </div>
 
-            {/* Image Upload */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-sm font-semibold mb-3 flex items-center">
-                <Upload className="mr-2 h-4 w-4" />
-                사진 업로드
-              </h3>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center px-3 py-6 border-2 border-dashed border-gray-300 rounded-md hover:border-gray-400 hover:bg-gray-50 transition-colors"
-                type="button"
-              >
-                <div className="text-center">
-                  <ImageIcon className="mx-auto h-6 w-6 text-gray-400 mb-1" />
-                  <p className="text-xs text-gray-600">클릭하여 사진 업로드</p>
-                  <p className="text-xs text-gray-500 mt-1">선택된 영역에 추가</p>
-                </div>
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-            </div>
           </div>
 
           {/* Main Content - Pages */}
           <div className="lg:col-span-4">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">페이지 ({work.pages.length}개)</h2>
+            {/* 페이지 편집 도구 */}
+            <div className="sticky top-4 z-10 mb-4 p-4 bg-gray-50 rounded-2xl border border-gray-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
+                  <Type className="h-3 w-3 text-white" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900">페이지 편집 도구</h3>
+              </div>
+              {selectedPage ? (
+                <div className="text-xs text-gray-600 mb-4">페이지의 텍스트나 이미지 영역을 직접 클릭하여 편집하세요.</div>
+              ) : (
+                <div className="text-xs text-gray-600 mb-4">편집할 페이지를 선택하세요.</div>
+              )}
+                {selectedElementId && (
+                  <div className="p-3 bg-teal-50 rounded-xl border border-teal-200">
+                    <p className="text-xs text-teal-800 font-semibold"><strong>선택된 요소:</strong> {selectedElementId}</p>
+                    <p className="text-xs text-teal-600 mt-1">이미지 영역인 경우 사진 업로드 버튼을 클릭하여 이미지를 추가할 수 있습니다.</p>
+                    
+                    {/* 텍스트 요소인 경우 텍스트 편집 툴바 */}
+                    {selectedPage && selectedPage.content.elements && (() => {
+                      const selectedElement = selectedPage.content.elements?.find(el => el.id === selectedElementId);
+                      if (selectedElement && selectedElement.type === 'text') {
+                        const updateElementStyle = (styleUpdates: Partial<BaseTemplateElement['style']>) => {
+                          if (selectedPage && selectedPage.content.elements) {
+                            const updatedElements = selectedPage.content.elements.map(el => 
+                              el.id === selectedElementId 
+                                ? { ...el, style: { ...el.style, ...styleUpdates } }
+                                : el
+                            );
+                            setWork((prev) => ({
+                              ...prev,
+                              pages: prev.pages.map((page) =>
+                                page.id === selectedPage.id
+                                  ? { ...page, content: { ...page.content, elements: updatedElements } }
+                                  : page
+                              ),
+                              updatedAt: new Date(),
+                            }));
+                          }
+                        };
+
+
+                        return (
+                          <div className="mt-3 p-3 bg-white rounded-lg border border-teal-300">
+                            <h4 className="text-xs font-semibold text-teal-800 mb-3">텍스트 편집</h4>
+                            
+                            {/* 텍스트 편집 툴바 */}
+                            <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
+                              {/* 폰트 패밀리 선택 */}
+                              <div className="relative flex-shrink-0">
+                                <select
+                                  value={selectedElement.style?.fontFamily || "Nanum Gothic"}
+                                  onChange={(e) => updateElementStyle({ fontFamily: e.target.value })}
+                                  className="appearance-none bg-white border border-gray-300 rounded px-2 py-1 text-xs pr-6 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[100px]"
+                                >
+                                  {FONT_FAMILIES.map((font) => (
+                                    <option key={font.value} value={font.value}>
+                                      {font.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500 pointer-events-none" />
+                              </div>
+
+                              {/* 폰트 크기 선택 */}
+                              <div className="relative flex-shrink-0">
+                                <select
+                                  value={selectedElement.style?.fontSize || 12}
+                                  onChange={(e) => updateElementStyle({ fontSize: parseInt(e.target.value) })}
+                                  className="appearance-none bg-white border border-gray-300 rounded px-2 py-1 text-xs pr-6 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[80px]"
+                                >
+                                  <optgroup label="본문">
+                                    {BODY_FONT_SIZES.map((size) => (
+                                      <option key={size} value={size}>
+                                        {size}pt
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                  <optgroup label="표기">
+                                    {TITLE_FONT_SIZES.map((size) => (
+                                      <option key={size} value={size}>
+                                        {size}pt
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                </select>
+                                <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500 pointer-events-none" />
+                              </div>
+
+                              {/* 구분선 */}
+                              <div className="w-px h-4 bg-gray-300"></div>
+
+                              {/* 텍스트 서식 버튼들 */}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                                  onClick={() => updateElementStyle({ 
+                                    fontWeight: selectedElement.style?.fontWeight === 'bold' ? 'normal' : 'bold' 
+                                  })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.fontWeight === 'bold' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="굵게"
+                                >
+                                  <Bold className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => updateElementStyle({ 
+                                    fontStyle: selectedElement.style?.fontStyle === 'italic' ? 'normal' : 'italic' 
+                                  })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.fontStyle === 'italic' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="기울임"
+                                >
+                                  <Italic className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => updateElementStyle({ 
+                                    textDecoration: selectedElement.style?.textDecoration === 'underline' ? 'none' : 'underline' 
+                                  })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.textDecoration === 'underline' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="밑줄"
+                                >
+                                  <Underline className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => updateElementStyle({ 
+                                    textDecoration: selectedElement.style?.textDecoration === 'line-through' ? 'none' : 'line-through' 
+                                  })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.textDecoration === 'line-through' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="취소선"
+                                >
+                                  <Strikethrough className="h-3 w-3" />
+                                </button>
+                </div>
+
+                              {/* 구분선 */}
+                              <div className="w-px h-4 bg-gray-300"></div>
+
+                              {/* 텍스트 정렬 버튼들 */}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => updateElementStyle({ textAlign: 'left' })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.textAlign === 'left' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="왼쪽 정렬"
+                                >
+                                  <AlignLeft className="h-3 w-3" />
+              </button>
+                                <button
+                                  onClick={() => updateElementStyle({ textAlign: 'center' })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.textAlign === 'center' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="가운데 정렬"
+                                >
+                                  <AlignCenter className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => updateElementStyle({ textAlign: 'right' })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.textAlign === 'right' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="오른쪽 정렬"
+                                >
+                                  <AlignRight className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => updateElementStyle({ textAlign: 'justify' })}
+                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
+                                    selectedElement.style?.textAlign === 'justify' ? 'bg-gray-300' : ''
+                                  }`}
+                                  title="양쪽 정렬"
+                                >
+                                  <AlignJustify className="h-3 w-3" />
+                                </button>
+            </div>
+                              
+                              {/* 링크 버튼 */}
+                              <div className="flex items-center gap-1 border-l border-gray-300 pl-2">
+                                <button
+                                  onClick={() => setShowLinkDialog(true)}
+                                  className="p-1.5 rounded hover:bg-gray-200 transition-colors"
+                                  title="링크 추가"
+                                >
+                                  <Link className="h-3 w-3" />
+                                </button>
+          </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+                
+                {/* 링크 추가 다이얼로그 */}
+                {showLinkDialog && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-6 w-96 max-w-[90vw] shadow-xl">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
+                          <Link className="h-3 w-3 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900">링크 추가</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            링크 텍스트
+                          </label>
+                          <input
+                            type="text"
+                            value={linkText}
+                            onChange={(e) => setLinkText(e.target.value)}
+                            placeholder="링크로 표시될 텍스트"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            URL
+                          </label>
+                          <input
+                            type="url"
+                            value={linkUrl}
+                            onChange={(e) => setLinkUrl(e.target.value)}
+                            placeholder="https://example.com"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          onClick={() => {
+                            setShowLinkDialog(false);
+                            setLinkUrl("");
+                            setLinkText("");
+                          }}
+                          className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          취소
+                        </button>
+                        <button
+                          onClick={addLink}
+                          disabled={!linkUrl.trim() || !linkText.trim()}
+                          className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          추가
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 p-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
+                    <Layout className="h-3 w-3 text-white" />
+                  </div>
+                  <h2 className="text-sm font-bold text-gray-900">페이지 ({work.pages.length}개)</h2>
+                </div>
               </div>
 
               {work.pages.length === 0 ? (
-                <div className="text-center py-12">
-                  <Layout className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">템플릿을 선택해보세요</h3>
-                  <p className="text-gray-600 mb-6">왼쪽에서 원하는 템플릿을 클릭하여 페이지를 추가하세요</p>
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Layout className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900 mb-1">템플릿을 선택해보세요</h3>
+                  <p className="text-xs text-gray-600 mb-4 max-w-md mx-auto">왼쪽에서 원하는 템플릿을 클릭하여 페이지를 추가하세요</p>
+                  <div className="flex justify-center gap-3">
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <div className="w-1.5 h-1.5 bg-teal-400 rounded-full"></div>
+                      표지
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                      내지
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {work.pages.map((page, index) => (
                     <div
                       key={page.id}
-                      className={`relative group border-2 rounded-lg overflow-hidden transition-all max-w-lg mx-auto ${selectedPageId === page.id ? "border-blue-500 shadow-lg" : "border-gray-200 hover:border-gray-300"}`}
+                      className={`relative group border-2 rounded-3xl overflow-hidden transition-all max-w-lg mx-auto shadow-lg hover:shadow-xl ${selectedPageId === page.id ? "border-teal-400 shadow-xl" : "border-gray-200 hover:border-gray-300"}`}
                       onClick={() => setSelectedPageId(page.id)}
                       role="button"
                       tabIndex={0}
@@ -1306,18 +2016,18 @@ const completeWork = async (): Promise<string | null> => {
                         if (e.key === "Enter" || e.key === " ") setSelectedPageId(page.id);
                       }}
                     >
-                      <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">{index + 1}</div>
+                      <div className="absolute top-3 left-3 bg-teal-500 text-white text-xs px-3 py-1 rounded-full z-10 font-semibold">{index + 1}</div>
 
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           requestDeletePage(page.id);
                         }}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all z-10"
+                        className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 shadow-lg"
                         type="button"
                         aria-label="페이지 삭제"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
 
                       <div className="aspect-[3/4] bg-white cursor-pointer relative" style={{ minHeight: "500px" }}>
@@ -1339,8 +2049,8 @@ const completeWork = async (): Promise<string | null> => {
                         )}
                       </div>
 
-                      <div className="p-3 bg-gray-50 border-t">
-                        <p className="text-sm font-medium text-center">
+                      <div className="p-4 bg-gray-50 border-t">
+                        <p className="text-sm font-semibold text-center text-gray-900">
                           {page.templateId?.startsWith("cover")
                             ? "표지"
                             : page.templateId
@@ -1349,7 +2059,7 @@ const completeWork = async (): Promise<string | null> => {
                               "템플릿 페이지"
                             : `${page.type} 페이지`}
                         </p>
-                        <p className="text-xs text-gray-400 text-center mt-1">{page.templateId ? `템플릿: ${page.templateId}` : `타입: ${page.type}`}</p>
+                        <p className="text-xs text-gray-500 text-center mt-1">{page.templateId ? `템플릿: ${page.templateId}` : `타입: ${page.type}`}</p>
                       </div>
                     </div>
                   ))}
@@ -1357,63 +2067,59 @@ const completeWork = async (): Promise<string | null> => {
                   <div className="max-w-lg mx-auto">
                     <button
                       onClick={() => setShowTemplateSelector(true)}
-                      className="w-full aspect-[3/4] border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-all flex items-center justify-center group"
+                      className="w-full aspect-[3/4] border-2 border-dashed border-gray-300 rounded-3xl hover:border-teal-400 hover:bg-teal-50 transition-all flex items-center justify-center group shadow-lg hover:shadow-xl"
                       style={{ minHeight: "500px" }}
                       type="button"
                     >
                       <div className="text-center">
-                        <Plus className="mx-auto h-8 w-8 text-gray-400 group-hover:text-gray-600 mb-2" />
-                        <p className="text-sm text-gray-600 group-hover:text-gray-800">새 페이지 추가</p>
+                        <div className="w-12 h-12 bg-gradient-to-r from-teal-100 to-teal-200 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:from-teal-200 group-hover:to-teal-300 transition-all">
+                          <Plus className="h-6 w-6 text-teal-600" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-600 group-hover:text-teal-600">새 페이지 추가</p>
+                        <p className="text-xs text-gray-500 mt-1">템플릿을 선택하세요</p>
                       </div>
                     </button>
                   </div>
                 </div>
               )}
 
-              {selectedPage && selectedPage.content.elements && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="text-sm font-semibold mb-2">페이지 편집 도구</h3>
-                  <div className="text-xs text-gray-600 mb-3">페이지의 텍스트나 이미지 영역을 직접 클릭하여 편집하세요.</div>
-                  {selectedElementId && (
-                    <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
-                      <p className="text-xs text-blue-800"><strong>선택된 요소:</strong> {selectedElementId}</p>
-                      <p className="text-xs text-blue-600 mt-1">이미지 영역인 경우 사진 업로드 버튼을 클릭하여 이미지를 추가할 수 있습니다.</p>
                     </div>
-                  )}
                 </div>
-              )}
             </div>
-          </div>
-        </div>
-      </div>
+      </main>
 
       {/* Template Selector Modal */}
       {showTemplateSelector && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold">페이지 템플릿 선택</h3>
-                <button onClick={() => setShowTemplateSelector(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors" type="button">
-                  <X className="h-5 w-5" />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
+                    <Layout className="h-5 w-5 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">페이지 템플릿 선택</h2>
+                </div>
+                <button onClick={() => setShowTemplateSelector(false)} className="p-3 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors" type="button">
+                  <X className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {PAGE_TEMPLATES.map((template) => (
                   <button
                     key={template.id}
                     onClick={() => applyTemplate(template)}
-                    className="group relative aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all"
+                    className="group relative aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border-2 border-transparent hover:border-teal-400 transition-all duration-200 hover:shadow-lg"
                     type="button"
                   >
-                    <div className="w-full h-full bg-white p-2">
+                    <div className="w-full h-full bg-white p-3">
                       <TemplatePreview template={template} />
                     </div>
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all" />
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <div className="bg-white/90 rounded px-2 py-1">
-                        <p className="text-xs font-medium truncate">{template.name}</p>
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <div className="bg-white/95 rounded-xl px-3 py-2 shadow-sm">
+                        <p className="text-sm font-semibold truncate text-gray-900">{template.name}</p>
                         <p className="text-xs text-gray-500 truncate">{template.description}</p>
                       </div>
                     </div>
@@ -1427,14 +2133,19 @@ const completeWork = async (): Promise<string | null> => {
 
       {/* Delete Confirm Modal */}
       {pendingDeleteId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md mx-4">
-            <div className="p-6">
-              <h4 className="text-lg font-semibold mb-2">페이지 삭제</h4>
-              <p className="text-sm text-gray-600">이 페이지를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
-              <div className="mt-6 flex justify-end gap-2">
-                <button onClick={cancelDeletePage} className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50" type="button">취소</button>
-                <button onClick={confirmDeletePage} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700" type="button">삭제</button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md mx-4">
+            <div className="p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-red-400 to-red-600 rounded-full flex items-center justify-center">
+                  <Trash2 className="h-5 w-5 text-white" />
+              </div>
+                <h4 className="text-xl font-bold text-gray-900">페이지 삭제</h4>
+              </div>
+              <p className="text-gray-600 mb-6">이 페이지를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+              <div className="flex justify-end gap-3">
+                <button onClick={cancelDeletePage} className="px-6 py-3 rounded-full border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all font-medium" type="button">취소</button>
+                <button onClick={confirmDeletePage} className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all shadow-lg hover:shadow-xl font-medium" type="button">삭제</button>
               </div>
             </div>
           </div>

@@ -10,6 +10,8 @@ import {
   Calendar,
   Clock,
   Heart,
+  Home,
+  LogOut,
   PieChart,
   Sparkles,
   Star,
@@ -359,16 +361,15 @@ export default function DashboardPage() {
   const TimelineTooltip: React.FC<CustomTooltipProps<TimelinePoint>> = ({
     active,
     payload,
-    label,
   }) => {
     if (!active || !payload || payload.length === 0) return null;
     const point = payload[0]?.payload;
     if (!point) return null;
 
     return (
-      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-purple-100">
+      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-teal-100">
         <p className="font-semibold text-gray-800">{point.displayDate}</p>
-        <p className="text-purple-600 font-medium">{point.title}</p>
+        <p className="text-teal-600 font-medium">{point.title}</p>
         <p className="text-sm text-gray-600">
           감정: {point.emotion} ({point.value}/5)
         </p>
@@ -388,11 +389,11 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100">
+      <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto mb-6"></div>
-            <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-purple-600" />
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-teal-200 border-t-teal-600 mx-auto mb-6"></div>
+            <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-teal-600" />
           </div>
           <p className="text-gray-700 font-medium">감정 통계를 분석하는 중...</p>
           <p className="text-gray-500 text-sm mt-2">잠시만 기다려주세요</p>
@@ -402,54 +403,108 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Header - Modern Glassmorphism */}
-      <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-white/20 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Header - Enhanced Design */}
+      <header className="sticky top-0 z-20 bg-gradient-to-r from-white/95 via-white/90 to-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 sm:py-5">
+          {/* Top Navigation Bar */}
+          <div className="flex items-center justify-end mb-3 sm:mb-4">
+            <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600">
               <button
                 onClick={handleGoBack}
-                className="mr-4 p-3 text-gray-600 hover:text-purple-600 rounded-xl hover:bg-purple-50 transition-all duration-200 group"
+                className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 flex items-center gap-2"
+                title="인생그래프로 돌아가기"
+                aria-label="인생그래프로 돌아가기"
               >
-                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200" />
+                <span className="hidden sm:inline">인생그래프로</span>
               </button>
+              <a 
+                className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105" 
+                href="/dashboard"
+                title="대시보드로 이동"
+                aria-label="대시보드로 이동"
+              >
+                <Home className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+              </a>
+              <a 
+                className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105" 
+                href="/dashboard/life-graph"
+                title="인생그래프로 이동"
+                aria-label="인생그래프로 이동"
+              >
+                <Heart className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+              </a>
+              <a 
+                className="group p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105" 
+                href="/api/auth/logout"
+                title="로그아웃"
+                aria-label="로그아웃"
+              >
+                <LogOut className="h-4 w-4 group-hover:text-red-600 transition-colors duration-200" />
+              </a>
+            </nav>
+          </div>
+
+          {/* Main Header Row */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8">
+            {/* Brand Logo */}
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <div className="relative">
+                <div className="h-12 w-12 flex items-center justify-center bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl shadow-lg">
+                  <svg width="32" height="32" viewBox="0 0 48 48" className="text-white">
+                    <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
+                    <path d="M24 8L30 18H40L32 26L36 36L24 30L12 36L16 26L8 18H18L24 8Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full animate-pulse"></div>
+              </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center">
-                  <BarChart3 className="mr-3 h-8 w-8 text-purple-600" />
-                  감정 통계 대시보드
-                </h1>
-                <p className="text-gray-600 mt-2 font-medium">
-                  {userInfo.name || "사용자"}님의 인생 여정을 데이터로 분석해보세요
-                </p>
+                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
+                <p className="text-sm text-gray-600">네트워크</p>
               </div>
             </div>
-            <div className="flex items-center space-x-6 text-sm">
-              <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
-                <User className="mr-2 h-4 w-4 text-purple-600" />
-                <span className="font-medium">{userInfo.name || "사용자"}</span>
-                <span className="ml-2 text-gray-500">
+
+            {/* Page Title */}
+            <div className="flex-1 text-center lg:text-center">
+              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-3 rounded-2xl border border-blue-100">
+                <div className="p-2 bg-gradient-to-r from-blue-400 to-purple-500 rounded-xl">
+                  <BarChart3 className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">감정 통계 대시보드</h2>
+                  <p className="text-sm text-gray-600">
+                    {userInfo.name || "사용자"}님의 인생 여정을 데이터로 분석해보세요
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* User Info */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+              <div className="flex items-center bg-gradient-to-r from-teal-50 to-teal-100 px-4 py-2.5 rounded-xl border border-teal-200">
+                <User className="mr-2 h-4 w-4 text-teal-600" />
+                <span className="font-medium text-gray-900">{userInfo.name || "사용자"}</span>
+                <span className="ml-2 text-gray-600 text-sm">
                   ({currentAge > 0 ? `${currentAge}세` : "나이 미설정"})
                 </span>
               </div>
-              <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
+              <div className="flex items-center bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-2.5 rounded-xl border border-blue-200">
                 <Calendar className="mr-2 h-4 w-4 text-blue-600" />
-                <span className="font-medium">{userInfo.birthYear || "출생년도 미설정"}년생</span>
-              </div>
-              <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
-                <span>📍 {userInfo.location || "위치 미설정"}</span>
+                <span className="font-medium text-gray-900">{userInfo.birthYear || "출생년도 미설정"}년생</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-4 py-12">
         {events.length === 0 ? (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-12 text-center border border-white/20">
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-12 text-center hover:shadow-xl transition-all duration-300">
             <div className="relative mb-6">
               <BarChart3 className="mx-auto h-20 w-20 text-gray-300" />
-              <Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-purple-400" />
+              <Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-teal-400" />
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-4">
               분석할 데이터가 없습니다
@@ -459,7 +514,7 @@ export default function DashboardPage() {
             </p>
             <button
               onClick={handleGoBack}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+              className="bg-gradient-to-r from-teal-400 to-teal-600 text-white px-8 py-4 rounded-full hover:shadow-lg transition-all duration-200 font-medium hover:scale-105"
             >
               인생그래프로 돌아가기
             </button>
@@ -473,7 +528,7 @@ export default function DashboardPage() {
                 value={`${totalEvents}개`}
                 desc="기록된 인생 이벤트"
                 icon={<Calendar className="h-6 w-6" />}
-                iconBg="from-blue-500 to-blue-600"
+                iconBg="from-teal-400 to-teal-600"
                 trend="+12%"
               />
               <InfoCard
@@ -481,7 +536,7 @@ export default function DashboardPage() {
                 value={`${averageHappiness}/5`}
                 desc="전체 기간 평균"
                 icon={<Heart className="h-6 w-6" />}
-                iconBg="from-green-500 to-emerald-600"
+                iconBg="from-teal-500 to-teal-700"
                 trend="85%"
               />
               <InfoCard
@@ -489,7 +544,7 @@ export default function DashboardPage() {
                 value={`${happinessRate}%`}
                 desc="행복한 순간들"
                 icon={<TrendingUp className="h-6 w-6" />}
-                iconBg="from-yellow-500 to-orange-500"
+                iconBg="from-teal-400 to-teal-500"
                 trend="+8%"
               />
               <InfoCard
@@ -497,16 +552,16 @@ export default function DashboardPage() {
                 value={currentAge > 0 ? `${currentAge}세` : "-"}
                 desc="계속되는 여정"
                 icon={<Clock className="h-6 w-6" />}
-                iconBg="from-purple-500 to-purple-600"
+                iconBg="from-teal-600 to-teal-800"
                 trend="진행중"
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               {/* 감정 분포 파이차트 - Enhanced */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+              <div className="bg-white rounded-3xl shadow-lg p-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg mr-3">
+                  <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-600 rounded-lg mr-3">
                     <PieChart className="h-5 w-5 text-white" />
                   </div>
                   감정별 분포
@@ -576,9 +631,9 @@ export default function DashboardPage() {
               </div>
 
               {/* 10년대별 평균 행복도 - Enhanced */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+              <div className="bg-white rounded-3xl shadow-lg p-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg mr-3">
+                  <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-700 rounded-lg mr-3">
                     <BarChart3 className="h-5 w-5 text-white" />
                   </div>
                   10년대별 평균 행복도
@@ -606,24 +661,24 @@ export default function DashboardPage() {
                           />
                           <Bar
                             dataKey="average"
-                            fill="url(#blueGradient)"
+                            fill="url(#tealGradient)"
                             radius={[8, 8, 0, 0]}
                           />
                           <defs>
-                            <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.9}/>
-                              <stop offset="95%" stopColor="#1E40AF" stopOpacity={0.7}/>
+                            <linearGradient id="tealGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="#0D9488" stopOpacity={0.7}/>
                             </linearGradient>
                           </defs>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="mt-6 p-4 bg-blue-50/80 rounded-xl backdrop-blur-sm">
-                      <p className="text-sm text-blue-700 font-medium mb-2">📊 분석 인사이트</p>
-                      <p className="text-sm text-blue-600">
+                    <div className="mt-6 p-4 bg-teal-50 rounded-xl">
+                      <p className="text-sm text-teal-700 font-medium mb-2">📊 분석 인사이트</p>
+                      <p className="text-sm text-teal-600">
                         • 인생의 각 시기별 감정 상태를 한눈에 확인할 수 있습니다
                       </p>
-                      <p className="text-sm text-blue-600">
+                      <p className="text-sm text-teal-600">
                         • 5점 만점 기준으로 평균값을 계산했습니다
                       </p>
                     </div>
@@ -639,9 +694,9 @@ export default function DashboardPage() {
 
             {/* 시간별 감정 추이 - Enhanced */}
             {timelineData.length > 1 && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 mb-8 border border-white/20">
+              <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg mr-3">
+                  <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg mr-3">
                     <TrendingUp className="h-5 w-5 text-white" />
                   </div>
                   인생 감정 추이 그래프
@@ -668,25 +723,25 @@ export default function DashboardPage() {
                       <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="#8B5CF6"
-                        fill="url(#purpleGradient)"
+                        stroke="#14B8A6"
+                        fill="url(#tealAreaGradient)"
                         strokeWidth={3}
                       />
                       <defs>
-                        <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.05}/>
+                        <linearGradient id="tealAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#14B8A6" stopOpacity={0.05}/>
                         </linearGradient>
                       </defs>
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-6 p-4 bg-purple-50/80 rounded-xl backdrop-blur-sm">
-                  <p className="text-sm text-purple-700 font-medium mb-2">💡 분석 노트</p>
-                  <p className="text-sm text-purple-600">
+                <div className="mt-6 p-4 bg-teal-50 rounded-xl">
+                  <p className="text-sm text-teal-700 font-medium mb-2">💡 분석 노트</p>
+                  <p className="text-sm text-teal-600">
                     • 월/일 정보가 있는 경우 더 정확한 시간순으로 표시됩니다
                   </p>
-                  <p className="text-sm text-purple-600">
+                  <p className="text-sm text-teal-600">
                     • 같은 시점에 여러 이벤트가 있을 경우 평균값으로 계산됩니다
                   </p>
                 </div>
@@ -695,9 +750,9 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* 최근 감정 트렌드 - Enhanced */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+              <div className="bg-white rounded-3xl shadow-lg p-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg mr-3">
+                  <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg mr-3">
                     <Clock className="h-5 w-5 text-white" />
                   </div>
                   최근 감정 트렌드
@@ -710,7 +765,7 @@ export default function DashboardPage() {
                         className="group flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-gray-100/80 rounded-xl hover:shadow-md transition-all duration-200 border border-gray-100/50"
                       >
                         <div className="flex-1">
-                          <p className="font-semibold text-gray-800 group-hover:text-purple-600 transition-colors">
+                          <p className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">
                             {trend.title}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
@@ -728,14 +783,14 @@ export default function DashboardPage() {
                                   key={`star-${index}-${i}`}
                                   className={`w-3 h-3 mx-0.5 ${
                                     i < trend.value
-                                      ? "fill-purple-500 text-purple-500"
+                                      ? "fill-teal-500 text-teal-500"
                                       : "fill-gray-200 text-gray-200"
                                   }`}
                                 />
                               ))}
                             </div>
                           </div>
-                          <div className="text-2xl font-bold text-purple-600">
+                          <div className="text-2xl font-bold text-teal-600">
                             {trend.value}
                           </div>
                         </div>
@@ -752,9 +807,9 @@ export default function DashboardPage() {
               </div>
 
               {/* AI 분석 및 조언 - Enhanced */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+              <div className="bg-white rounded-3xl shadow-lg p-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                  <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg mr-3">
+                  <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg mr-3">
                     <Brain className="h-5 w-5 text-white" />
                   </div>
                   AI 인사이트 & 조언
@@ -774,12 +829,12 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  <div className="p-5 bg-gradient-to-r from-blue-50/80 to-cyan-50/80 rounded-xl border-l-4 border-blue-400">
+                  <div className="p-5 bg-gradient-to-r from-teal-50 to-teal-50 rounded-xl border-l-4 border-teal-400">
                     <div className="flex items-center mb-2">
-                      <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
-                      <h4 className="font-bold text-blue-800">성장 포인트</h4>
+                      <TrendingUp className="h-5 w-5 text-teal-600 mr-2" />
+                      <h4 className="font-bold text-teal-800">성장 포인트</h4>
                     </div>
-                    <p className="text-blue-700 text-sm leading-relaxed">
+                    <p className="text-teal-700 text-sm leading-relaxed">
                       평균 행복도가 {averageHappiness}/5점으로
                       {averageHappiness >= 4
                         ? " 매우 높은"
@@ -791,12 +846,12 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="p-5 bg-gradient-to-r from-purple-50/80 to-pink-50/80 rounded-xl border-l-4 border-purple-400">
+                  <div className="p-5 bg-gradient-to-r from-teal-50 to-teal-50 rounded-xl border-l-4 border-teal-500">
                     <div className="flex items-center mb-2">
-                      <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
-                      <h4 className="font-bold text-purple-800">미래 전망</h4>
+                      <Sparkles className="h-5 w-5 text-teal-600 mr-2" />
+                      <h4 className="font-bold text-teal-800">미래 전망</h4>
                     </div>
-                    <p className="text-purple-700 text-sm leading-relaxed">
+                    <p className="text-teal-700 text-sm leading-relaxed">
                       지금까지 {totalEvents}개의 소중한 순간들을 기록하셨네요.
                       월/일까지 세세하게 기록된 추억들이 더욱 정확한 분석을 가능하게 합니다.
                       앞으로도 계속해서 의미있는 순간들을 기록하며 더 풍성한
@@ -808,9 +863,9 @@ export default function DashboardPage() {
             </div>
 
             {/* 상세 이벤트 목록 - Enhanced */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 mt-8 border border-white/20">
+            <div className="bg-white rounded-3xl shadow-lg p-8 mt-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <div className="p-2 bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg mr-3">
+                <div className="p-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg mr-3">
                   <Activity className="h-5 w-5 text-white" />
                 </div>
                 전체 인생 이벤트
@@ -857,7 +912,7 @@ export default function DashboardPage() {
                         return (
                           <tr
                             key={event.id}
-                            className={`border-b border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-blue-50/50 transition-all duration-200 ${
+                            className={`border-b border-gray-100 hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-teal-50/50 transition-all duration-200 ${
                               index === 0 ? 'bg-gradient-to-r from-yellow-50/30 to-orange-50/30' : ''
                             }`}
                           >
@@ -886,13 +941,13 @@ export default function DashboardPage() {
                                       key={`table-star-${event.id}-${i}`}
                                       className={`w-4 h-4 mx-0.5 ${
                                         i < emotionConfig[event.emotion].value
-                                          ? "fill-purple-500 text-purple-500"
+                                          ? "fill-teal-500 text-teal-500"
                                           : "fill-gray-200 text-gray-200"
                                       }`}
                                     />
                                   ))}
                                 </div>
-                                <span className="text-sm font-semibold text-purple-600">
+                                <span className="text-sm font-semibold text-teal-600">
                                   {emotionConfig[event.emotion].value}/5
                                 </span>
                               </div>
@@ -911,7 +966,7 @@ export default function DashboardPage() {
             </div>
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
@@ -934,19 +989,19 @@ function InfoCard({
   trend?: string;
 }) {
   return (
-    <div className="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+    <div className="group bg-white rounded-3xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300 hover:scale-105">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
             {title}
           </p>
-          <p className="text-3xl font-bold text-gray-800 mt-2 group-hover:text-purple-600 transition-colors">
+          <p className="text-3xl font-bold text-gray-800 mt-2 group-hover:text-teal-600 transition-colors">
             {value}
           </p>
           <p className="text-sm text-gray-500 mt-1">{desc}</p>
           {trend && (
             <div className="mt-3">
-              <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+              <span className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-teal-100 to-teal-200 text-teal-700 text-xs rounded-full font-medium shadow-sm">
                 {trend}
               </span>
             </div>

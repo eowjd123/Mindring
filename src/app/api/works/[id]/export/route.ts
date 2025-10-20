@@ -35,7 +35,7 @@ interface WorkForExport {
 // 작품 내보내기 (PDF, 이미지 등)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const me = await getSessionUser();
@@ -43,7 +43,7 @@ export async function POST(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const workId = params.id;
+    const { id: workId } = await params;
     const body = await req.json() as { format?: string };
     const format = body.format || 'pdf'; // 기본값은 PDF
 
@@ -80,8 +80,8 @@ export async function POST(
       // PDF 생성 로직 (임시)
       const pdfContentString = generateSimplePDF(work as WorkForExport);
       
-      // 내보내기 기록 저장
-      const exportRecord = await prisma.export.create({
+      // 내보내기 기록 저장 (향후 사용 예정)
+      await prisma.export.create({
         data: {
           workId: workId,
           fileType: 'PDF',

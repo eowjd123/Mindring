@@ -52,50 +52,114 @@ export default function SignupForm({ initialError = "" }: Props) {
   const canSubmit = emailRe.test(email.trim().toLowerCase()) && pwRe.test(pw) && pw === pw2 && !isPending;
 
   return (
-    <div className="space-y-6 border bg-white rounded-xl p-6 shadow-sm">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">회원가입</h1>
-        <p className="text-sm text-gray-500">이메일과 비밀번호로 계정을 생성하세요.</p>
-      </header>
-
-      {err ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
-
-      <form className="space-y-3" onSubmit={onSubmit} onKeyDown={onKeyDown} noValidate>
-        <label className="block">
-          <span className="text-sm font-medium">이름(선택)</span>
-          <input value={name} onChange={(e) => setName(e.currentTarget.value)} className="mt-1 w-full rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-300" placeholder="홍길동" />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium">이메일</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} className="mt-1 w-full rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-300" placeholder="you@example.com" autoComplete="email" required />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium">비밀번호</span>
-          <div className="mt-1 flex rounded border focus-within:ring-2 focus-within:ring-gray-300">
-            <input type={showPw ? "text" : "password"} value={pw} onChange={(e) => setPw(e.currentTarget.value)} className="w-full rounded-l px-3 py-2 outline-none" placeholder="••••••••" autoComplete="new-password" required />
-            <button type="button" onClick={() => setShowPw((v) => !v)} className="px-3 text-sm text-gray-600 hover:bg-gray-50 rounded-r border-l" aria-pressed={showPw} aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 보기"} title={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}>
-              {showPw ? "숨김" : "보기"}
-            </button>
+    <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+      <div className="px-6 py-6">
+        <header className="text-center space-y-2 mb-6">
+          {/* 브랜드 로고 - 메인 페이지와 동일한 스타일 */}
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <div className="h-12 w-12 flex items-center justify-center">
+              <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
+                <g transform="translate(24,24)">
+                  <circle cx="0" cy="0" r="3" fill="currentColor" />
+                  <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
+                  <circle cx="16" cy="0" r="2" fill="currentColor"/>
+                  <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
+                  <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
+                  <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
+                  <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
+                </g>
+              </svg>
+            </div>
+            <div className="text-center">
+              <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
+              <p className="text-sm text-gray-600">네트워크</p>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-gray-500">8자 이상, 영문/숫자 각각 1자 이상 포함</p>
-        </label>
+          <h2 className="text-xl font-bold text-gray-900">회원가입</h2>
+          <p className="text-sm text-gray-500">이메일과 비밀번호로 계정을 생성하세요.</p>
+        </header>
 
-        <label className="block">
-          <span className="text-sm font-medium">비밀번호 확인</span>
-          <input type={showPw ? "text" : "password"} value={pw2} onChange={(e) => setPw2(e.currentTarget.value)} className="mt-1 w-full rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-300" placeholder="••••••••" autoComplete="new-password" required />
-        </label>
+        {err ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 mb-4">{err}</div> : null}
 
-        <button type="submit" disabled={!canSubmit} className="w-full rounded bg-black px-4 py-2 font-medium text-white disabled:opacity-60">
-          {isPending ? "가입 중..." : "회원가입"}
-        </button>
-      </form>
+        <form className="space-y-4" onSubmit={onSubmit} onKeyDown={onKeyDown} noValidate>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700 mb-1.5 block">이름(선택)</span>
+            <input 
+              value={name} 
+              onChange={(e) => setName(e.currentTarget.value)} 
+              className="w-full rounded-full border-2 border-gray-300 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-teal-400 focus:ring-2 focus:ring-teal-100" 
+              placeholder="홍길동" 
+            />
+          </label>
 
-      <footer className="flex justify-between text-sm text-gray-500">
-        <Link href="/login">이미 계정이 있으신가요? 로그인</Link>
-        <span>DigitalNote</span>
-      </footer>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700 mb-1.5 block">이메일</span>
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.currentTarget.value)} 
+              className="w-full rounded-full border-2 border-gray-300 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-teal-400 focus:ring-2 focus:ring-teal-100" 
+              placeholder="you@example.com" 
+              autoComplete="email" 
+              required 
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700 mb-1.5 block">비밀번호</span>
+            <div className="relative">
+              <input 
+                type={showPw ? "text" : "password"} 
+                value={pw} 
+                onChange={(e) => setPw(e.currentTarget.value)} 
+                className="w-full rounded-full border-2 border-gray-300 bg-white px-4 py-3 pr-12 text-sm outline-none transition-colors focus:border-teal-400 focus:ring-2 focus:ring-teal-100" 
+                placeholder="••••••••" 
+                autoComplete="new-password" 
+                required 
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPw((v) => !v)} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-pressed={showPw} 
+                aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 보기"} 
+                title={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}
+              >
+                {showPw ? "숨김" : "보기"}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">8자 이상, 영문/숫자 각각 1자 이상 포함</p>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700 mb-1.5 block">비밀번호 확인</span>
+            <input 
+              type={showPw ? "text" : "password"} 
+              value={pw2} 
+              onChange={(e) => setPw2(e.currentTarget.value)} 
+              className="w-full rounded-full border-2 border-gray-300 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-teal-400 focus:ring-2 focus:ring-teal-100" 
+              placeholder="••••••••" 
+              autoComplete="new-password" 
+              required 
+            />
+          </label>
+
+          <button 
+            type="submit" 
+            disabled={!canSubmit} 
+            className="w-full rounded-full bg-gradient-to-r from-teal-400 to-teal-600 px-4 py-3 font-medium text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-lg"
+          >
+            {isPending ? "가입 중..." : "회원가입"}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex justify-between text-sm text-gray-500">
+            <Link href="/login" className="hover:text-teal-600 transition-colors">이미 계정이 있으신가요? 로그인</Link>
+            <span>그레이트 시니어</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -209,27 +209,60 @@ export default function AIChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex flex-1 flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b bg-white px-6 py-4 shadow-sm">
-          <div className="flex items-center">
-            <div className="mr-4 rounded-full bg-blue-500 p-2">
-              <Bot className="h-6 w-6 text-white" />
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Header - Main page style */}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <div className="flex items-center justify-end mb-2">
+            <nav className="flex items-center gap-6 text-sm text-gray-600">
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/books">라이브러리</a>
+              <a className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</a>
+            </nav>
+          </div>
+          <div className="flex items-center justify-between gap-8">
+            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
+              <div className="h-12 w-12 flex items-center justify-center">
+                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
+                  <g transform="translate(24,24)">
+                    <circle cx="0" cy="0" r="3" fill="currentColor" />
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
+                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
+                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
+                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
+                  </g>
+                </svg>
+              </div>
+              <div className="text-center">
+                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
+                <p className="text-sm text-gray-600">네트워크</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">디지털자서전 도우미</h1>
-              <p className="text-sm text-gray-500">ChatGPT 기반 글쓰기 도우미</p>
+            <div className="flex-1 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-3">
+                <Bot className="h-6 w-6 text-teal-500" />
+                AI 도우미
+              </h2>
+              <p className="text-gray-600 mt-1">ChatGPT 기반 글쓰기 도우미</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={clearConversation}
+                className="flex items-center rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                대화 초기화
+              </button>
             </div>
           </div>
-          <button
-            onClick={clearConversation}
-            className="flex items-center rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            대화 초기화
-          </button>
         </div>
+      </header>
+
+      <div className="flex flex-1 flex-col h-[calc(100vh-120px)]">
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6">
@@ -243,7 +276,7 @@ export default function AIChatPage() {
               >
                 <div
                   className={`flex-shrink-0 rounded-full p-2 ${
-                    message.role === 'user' ? 'bg-blue-500' : 'bg-green-500'
+                    message.role === 'user' ? 'bg-teal-500' : 'bg-teal-400'
                   }`}
                 >
                   {message.role === 'user' ? (
@@ -254,10 +287,10 @@ export default function AIChatPage() {
                 </div>
 
                 <div
-                  className={`max-w-2xl rounded-2xl px-4 py-3 ${
+                  className={`max-w-2xl rounded-3xl px-4 py-3 ${
                     message.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white border shadow-sm'
+                      ? 'bg-teal-500 text-white'
+                      : 'bg-white border border-gray-200 shadow-lg'
                   }`}
                 >
                   {message.audioFile && (
@@ -269,7 +302,7 @@ export default function AIChatPage() {
                   <div className="whitespace-pre-wrap">{message.content}</div>
                   <div
                     className={`mt-2 text-xs opacity-75 ${
-                      message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                      message.role === 'user' ? 'text-teal-100' : 'text-gray-500'
                     }`}
                   >
                     <time suppressHydrationWarning>
@@ -285,14 +318,14 @@ export default function AIChatPage() {
 
             {isLoading && (
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 rounded-full bg.green-500 p-2">
+                <div className="flex-shrink-0 rounded-full bg-teal-400 p-2">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
-                <div className="max-w-2xl rounded-2xl border bg-white px-4 py-3 shadow-sm">
+                <div className="max-w-2xl rounded-3xl border border-gray-200 bg-white px-4 py-3 shadow-lg">
                   <div className="flex items-center space-x-2">
-                    <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400"></div>
-                    <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400 delay-100"></div>
-                    <div className="h-2 w-2 animate-pulse rounded-full bg-gray-400 delay-200"></div>
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-teal-400"></div>
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-teal-400 delay-100"></div>
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-teal-400 delay-200"></div>
                     <span className="text-sm text-gray-500">답변을 생성하고 있습니다...</span>
                   </div>
                 </div>
@@ -304,7 +337,7 @@ export default function AIChatPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mx-6 mb-4 rounded-lg bg-red-50 p-4">
+          <div className="mx-6 mb-4 rounded-3xl bg-red-50 p-4 border border-red-200 shadow-lg">
             <div className="flex">
               <AlertCircle className="h-5 w-5 text-red-400" />
               <div className="ml-3">
@@ -316,13 +349,13 @@ export default function AIChatPage() {
 
         {/* Selected File */}
         {selectedFile && (
-          <div className="mx-6 mb-4 rounded-lg bg-blue-50 p-4">
+          <div className="mx-6 mb-4 rounded-3xl bg-teal-50 p-4 border border-teal-200 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <FileAudio className="mr-2 h-5 w-5 text-blue-500" />
-                <span className="text-sm text-blue-700">{selectedFile.name}</span>
+                <FileAudio className="mr-2 h-5 w-5 text-teal-500" />
+                <span className="text-sm text-teal-700">{selectedFile.name}</span>
               </div>
-              <button onClick={removeSelectedFile} className="text-blue-500 hover:text-blue-700">
+              <button onClick={removeSelectedFile} className="text-teal-500 hover:text-teal-700">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -330,7 +363,7 @@ export default function AIChatPage() {
         )}
 
         {/* Input Area */}
-        <div className="border-t bg-white px-6 py-4">
+        <div className="border-t border-gray-200 bg-white px-6 py-4">
           <div className="mx-auto max-w-4xl">
             <div className="flex items-end space-x-3">
               <div className="flex-1">
@@ -339,7 +372,7 @@ export default function AIChatPage() {
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
-                  className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full resize-none rounded-2xl border-2 border-gray-300 px-4 py-3 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100 transition-colors"
                   rows={3}
                   maxLength={2000}
                 />
@@ -349,7 +382,7 @@ export default function AIChatPage() {
               {/* File Upload */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="rounded-full bg-gray-100 p-3 hover:bg-gray-200"
+                className="rounded-full bg-gray-100 p-3 hover:bg-gray-200 transition-colors"
                 title="음성 파일 업로드"
               >
                 <Paperclip className="h-5 w-5 text-gray-600" />
@@ -365,7 +398,7 @@ export default function AIChatPage() {
               {/* Voice Recording */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`rounded-full p-3 ${
+                className={`rounded-full p-3 transition-colors ${
                   isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-gray-100 hover:bg-gray-200'
                 }`}
                 title={isRecording ? '녹음 중지' : '음성 녹음'}
@@ -377,7 +410,7 @@ export default function AIChatPage() {
               <button
                 onClick={handleSendMessage}
                 disabled={(!inputText.trim() && !selectedFile) || isLoading}
-                className="rounded-full bg-blue-500 p-3 hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                className="rounded-full bg-gradient-to-r from-teal-400 to-teal-600 p-3 hover:shadow-lg disabled:cursor-not-allowed disabled:bg-gray-300 transition-all duration-200"
                 title="전송"
               >
                 <Send className="h-5 w-5 text-white" />

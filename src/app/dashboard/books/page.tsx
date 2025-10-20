@@ -487,10 +487,10 @@ export default function BooksPage() {
   /* ========== 로딩 화면 ========== */
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center space-y-6">
           <div className="relative">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full animate-pulse mx-auto" />
+            <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-600 rounded-full animate-pulse mx-auto" />
             <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-white animate-spin" />
           </div>
           <div className="space-y-2">
@@ -531,45 +531,58 @@ export default function BooksPage() {
 
   /* ========== 라이브러리 화면 ========== */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* 상단 네비게이션 */}
-      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            {/* 브랜드 */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Library className="h-6 w-6 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                  <Sparkles className="h-2 w-2 text-white" />
-                </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Header - Main page style */}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <div className="flex items-center justify-end mb-2">
+            <nav className="flex items-center gap-6 text-sm text-gray-600">
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
+              <a className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</a>
+            </nav>
+          </div>
+          <div className="flex items-center justify-between gap-8">
+            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
+              <div className="h-12 w-12 flex items-center justify-center">
+                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
+                  <g transform="translate(24,24)">
+                    <circle cx="0" cy="0" r="3" fill="currentColor" />
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
+                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
+                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
+                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
+                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
+                  </g>
+                </svg>
               </div>
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                  Digital Library
-                </h1>
-                <p className="text-sm text-gray-500 font-medium">
-                  당신만의 특별한 작품 컬렉션
-                </p>
+              <div className="text-center">
+                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
+                <p className="text-sm text-gray-600">네트워크</p>
               </div>
             </div>
-
-            {/* 액션 */}
+            <div className="flex-1 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-3">
+                <Library className="h-6 w-6 text-teal-500" />
+                Digital Library
+              </h2>
+              <p className="text-gray-600 mt-1">당신만의 특별한 작품 컬렉션</p>
+            </div>
             <div className="flex items-center space-x-4">
               <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-teal-600 transition-colors" />
                 <Input
                   placeholder="작품 검색하기..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-72 bg-white/70 backdrop-blur border-gray-200/60 focus:border-blue-300 focus:ring-blue-200/50 rounded-xl shadow-sm"
+                  className="pl-10 w-72 bg-white/70 backdrop-blur border-2 border-gray-300 focus:border-teal-400 focus:ring-teal-100 rounded-full shadow-sm"
                 />
               </div>
               <Link
                 href="/dashboard/create-work"
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-400 to-teal-600 text-white font-semibold rounded-full hover:shadow-lg transform hover:scale-105 transition-all duration-200"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 새 작품 만들기
@@ -577,10 +590,10 @@ export default function BooksPage() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* 메인 콘텐츠 */}
-      <main className="max-w-7xl mx-auto px-6 py-12 space-y-16">
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-4 py-12 space-y-16">
         <ShelfSection
           title="📖 현재 읽고 있는 작품"
           subtitle="진행 중인 작품들"
@@ -598,15 +611,41 @@ export default function BooksPage() {
         />
       </main>
 
-      {/* 푸터 */}
-      <div className="mt-20 py-8 bg-white/50 backdrop-blur border-t border-gray-200/50">
-        <div className="max-w-7xl mx-auto px-6 text-center text-gray-500">
-          <p className="flex items-center justify-center space-x-2">
-            <BookOpen className="h-4 w-4" />
-            <span>총 {books.length}개의 작품이 라이브러리에 저장되어 있습니다</span>
-          </p>
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <div className="flex flex-col lg:flex-row justify-between gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-gray-900">Great Senior</span>
+                <span className="text-lg text-gray-600">network</span>
+                <span className="ml-4 text-sm text-gray-500">제휴문의 | 이메일 무단 수집 거부</span>
+              </div>
+              <div className="text-sm text-gray-600 space-y-2 max-w-2xl">
+                <p><span className="font-medium">마인드라</span> 대표자 서현숙 <span className="ml-4 font-medium">사업자등록번호:</span> 255-37-01508</p>
+                <p>경기도 고양시 일산동구 중앙로 1036 4층(고양중장년기술창업센터, 1-1층)</p>
+                <p><span className="font-medium">통신판매신고번호:</span> 제2025-고양일산동-0921호</p>
+                <p className="text-gray-500 pt-2">Copyright 2025. MINDRA INC. All rights reserved.</p>
+              </div>
+            </div>
+            <div className="lg:text-right">
+              <p className="text-sm text-gray-500 mb-2">FAMILY SITE</p>
+              <div className="flex items-center justify-start lg:justify-end">
+                <span className="text-lg font-bold text-gray-900">Mind<span className="text-teal-500">ra</span></span>
+                <button aria-label="패밀리 사이트 메뉴 열기" className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 10l5 5 5-5z"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="mt-4 flex items-center justify-center lg:justify-end space-x-2 text-gray-500">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-sm">총 {books.length}개의 작품이 라이브러리에 저장되어 있습니다</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
@@ -628,48 +667,55 @@ function ShelfSection({
   variant: "current" | "next" | "finished";
 }) {
   const gradientColors = {
-    current: "from-emerald-500 to-teal-500",
-    next: "from-amber-500 to-orange-500",
-    finished: "from-blue-500 to-purple-500",
+    current: "from-teal-400 to-teal-600",
+    next: "from-teal-500 to-teal-700",
+    finished: "from-teal-600 to-teal-800",
   };
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-          <p className="text-gray-600">{subtitle}</p>
-        </div>
-        <button className="group flex items-center space-x-2 text-gray-500 hover:text-blue-600 transition-colors">
-          <span className="text-sm font-medium">전체 보기</span>
-          <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-        </button>
-      </div>
-
-      {books.length === 0 ? (
-        <div className="text-center py-16 space-y-4">
-          <div
-            className={`w-16 h-16 bg-gradient-to-r ${gradientColors[variant]} rounded-2xl mx-auto flex items-center justify-center opacity-50`}
-          >
-            <BookOpen className="h-8 w-8 text-white" />
-          </div>
+      <div className="bg-white rounded-3xl shadow-lg p-8 border border-gray-200 hover:shadow-xl transition-all duration-300">
+        <div className="flex items-center justify-between mb-6">
           <div className="space-y-2">
-            <p className="text-gray-500 font-medium">아직 작품이 없습니다</p>
-            <p className="text-sm text-gray-400">새로운 작품을 만들어보세요!</p>
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-600 rounded-lg">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              {title}
+            </h2>
+            <p className="text-gray-600">{subtitle}</p>
           </div>
+          <button className="group flex items-center space-x-2 text-gray-500 hover:text-teal-600 transition-colors">
+            <span className="text-sm font-medium">전체 보기</span>
+            <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
-          {books.map((book) => (
-            <BookCover
-              key={book.id}
-              book={book}
-              onClick={() => onSelect(book)}
-              variant={variant}
-            />
-          ))}
-        </div>
-      )}
+
+        {books.length === 0 ? (
+          <div className="text-center py-16 space-y-4">
+            <div
+              className={`w-16 h-16 bg-gradient-to-r ${gradientColors[variant]} rounded-2xl mx-auto flex items-center justify-center opacity-50`}
+            >
+              <BookOpen className="h-8 w-8 text-white" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-gray-500 font-medium">아직 작품이 없습니다</p>
+              <p className="text-sm text-gray-400">새로운 작품을 만들어보세요!</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
+            {books.map((book) => (
+              <BookCover
+                key={book.id}
+                book={book}
+                onClick={() => onSelect(book)}
+                variant={variant}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -689,15 +735,15 @@ function BookCover({
   const cover = book.coverImage;
 
   const gradientColors = {
-    current: "from-emerald-400 via-teal-400 to-cyan-400",
-    next: "from-amber-400 via-orange-400 to-red-400",
-    finished: "from-blue-400 via-purple-400 to-pink-400",
+    current: "from-teal-400 via-teal-500 to-teal-600",
+    next: "from-teal-500 via-teal-600 to-teal-700",
+    finished: "from-teal-600 via-teal-700 to-teal-800",
   };
 
   return (
     <button
       onClick={onClick}
-      className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-white shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-200/50"
+      className="group relative aspect-[3/4] rounded-3xl overflow-hidden bg-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 border border-gray-200"
       title={book.title}
     >
       {cover ? (
@@ -729,7 +775,7 @@ function BookCover({
       )}
 
       {/* 페이지 수 배지 */}
-      <div className="absolute top-3 right-3 px-2 py-1 bg-black/70 backdrop-blur text-white text-xs font-semibold rounded-lg">
+      <div className="absolute top-3 right-3 px-2 py-1 bg-black/70 backdrop-blur text-white text-xs font-semibold rounded-full">
         {book._count.pages}p
       </div>
 
