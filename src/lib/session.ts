@@ -69,7 +69,7 @@ export async function issueSession(
     name: COOKIE,
     value: sign(sessionId),
     httpOnly: true,
-    secure: IS_PROD, // prod에서만 Secure 강제
+    secure: false, // prod에서만 Secure 강제
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
@@ -115,7 +115,7 @@ export async function extendSession(hours = 24) {
     name: COOKIE,
     value: sign(session.sessionId),
     httpOnly: true,
-    secure: IS_PROD,
+    secure: false,
     sameSite: "lax",
     path: "/",
     expires: newExp,
