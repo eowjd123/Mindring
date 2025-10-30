@@ -104,7 +104,7 @@ export default function NewWorkSetupPage() {
                 <ChevronLeft className="h-4 w-4" />
                 뒤로
               </button>
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard" title="메인 홈" aria-label="메인 홈">대시보드</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
               <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
               <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
               <a className="hover:text-gray-900 transition-colors" href="/dashboard/books">라이브러리</a>

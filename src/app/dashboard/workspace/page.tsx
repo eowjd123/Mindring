@@ -257,7 +257,7 @@ export default function WorkspacePage() {
               <a 
                 className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105" 
                 href="/dashboard"
-                title="메인 홈"
+                title="대시보드로 이동"
               >
                 <span className="group-hover:text-gray-900 transition-colors">대시보드</span>
               </a>

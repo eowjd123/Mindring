@@ -464,8 +464,8 @@ export default function WorkPreviewPage() {
                 <button
                   onClick={() => router.push("/dashboard")}
                   className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
-                title="메인 홈"
-                aria-label="메인 홈"
+                  title="대시보드로 이동"
+                  aria-label="대시보드로 이동"
                 >
                   <Book className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
                 </button>
