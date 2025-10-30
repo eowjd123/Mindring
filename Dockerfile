@@ -7,11 +7,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# 전체 소스 복사 (Prisma 포함)
+# 전체 코드 복사 (prisma 포함)
 COPY . .
 
-# Prisma Client 생성 (schema.prisma 존재 보장됨)
-RUN npx prisma generate
+# Prisma 스키마 존재 확인 + Client 생성
+RUN ls -la prisma && npx prisma generate
 
 # Next.js 빌드
 RUN npm run build
@@ -25,10 +25,10 @@ WORKDIR /app
 # 빌드 결과 복사
 COPY --from=builder /app ./
 
-# Prisma Client 포함한 상태 유지
+# Prisma Client 재생성 (런타임 환경 대비)
 RUN npx prisma generate
 
-# 환경 변수 및 포트 설정
+# 환경 변수 및 포트
 ENV NODE_ENV=production
 EXPOSE 3000
 
