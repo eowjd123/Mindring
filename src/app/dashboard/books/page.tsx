@@ -537,7 +537,7 @@ export default function BooksPage() {
         <div className="mx-auto max-w-7xl px-4 py-3">
           <div className="flex items-center justify-end mb-2">
             <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
+              <a className="hover:text-gray-900 transition-colors" href="/dashboard" title="메인 홈" aria-label="메인 홈">대시보드</a>
               <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
               <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
               <a className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</a>
