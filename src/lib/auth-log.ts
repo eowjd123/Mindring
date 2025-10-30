@@ -1,4 +1,4 @@
-// lib/auth-log.ts
+// 테스트 저장lib/auth-log.ts
 
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
