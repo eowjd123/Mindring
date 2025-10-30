@@ -1,0 +1,36 @@
+name: Deploy Mindring
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🚀 SSH into NHN Cloud and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/ubuntu/mindring
+
+            echo "📥 최신 코드 가져오기"
+            git pull origin main
+
+            echo "🧹 기존 컨테이너 정리"
+            sudo docker stop mindring || true
+            sudo docker rm mindring || true
+            sudo docker rmi mindring:latest || true
+
+            echo "🔨 새 이미지 빌드"
+            sudo docker build --no-cache -t mindring:latest -f ./Dockerfile .
+
+            echo "🚀 새 컨테이너 실행"
+            sudo docker run -d -p 3000:3000 --env-file .env --name mindring mindring:latest
+
+            echo "✅ Mindring 배포 완료!"
