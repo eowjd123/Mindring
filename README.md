@@ -1,5 +1,6 @@
 ## Getting Started
-
+# Mindring
+GitHub Actions 자동배포 테스트 🚀
 First, run the development server:
 
 ```bash
