@@ -7,6 +7,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# .env 및 Prisma 복사 (Prisma generate 시점에 필요)
+COPY .env .env
+COPY prisma ./prisma
+
 # 전체 코드 복사 (prisma 포함)
 COPY . .
 
