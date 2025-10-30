@@ -28,23 +28,24 @@ export default function RootPage() {
           {/* Main Header Row */}
           <div className="flex items-center justify-between gap-8">
             {/* Brand Logo */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
-              <div className="h-12 w-12 flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
-                  <g transform="translate(24,24)">
-                    <circle cx="0" cy="0" r="3" fill="currentColor" />
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                  </g>
-                </svg>
+            <div className="flex items-center gap-2 flex-shrink-0 -mt-8">
+              <div className="relative h-16 w-32">
+                <Image
+                  src="/img/OBJECTS.png"
+                  alt="Mindring OBJECTS"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
-              <div className="text-center">
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
+              <div className="relative h-16 w-32">
+                <Image
+                  src="/img/maind.png"
+                  alt="Mindring Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
             </div>
 
@@ -107,8 +108,16 @@ export default function RootPage() {
           <div className="flex flex-col lg:flex-row justify-between gap-8">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-gray-900">Great Senior</span>
-                <span className="text-lg text-gray-600">network</span>
+                <div className="flex items-center gap-2">
+                  <div className="relative h-8 w-16">
+                    <Image
+                      src="/img/maind.png"
+                      alt="Mindring Logo"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
                 <span className="ml-4 text-sm text-gray-500">제휴문의 | 이메일 무단 수집 거부</span>
               </div>
               <div className="text-sm text-gray-600 space-y-2 max-w-2xl">
@@ -247,13 +256,13 @@ function ServiceCard({
 const ServiceIcons = {
   // ✅ 기억퍼즐: public/img/icon_1.png 이미지를 사용
   puzzle: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_1.png"  // ← public/img/icon_1.png
           alt="기억퍼즐 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -261,13 +270,13 @@ const ServiceIcons = {
     </div>
   ),
   book: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_2.png"  // ← public/img/icon_1.png
           alt="라이프북 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -275,13 +284,13 @@ const ServiceIcons = {
     </div>
   ),
   bulb: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_3.png"  // ← public/img/icon_1.png
           alt="인지클래스 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -289,13 +298,13 @@ const ServiceIcons = {
     </div>
   ),
   palette: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_4.png"  // ← public/img/icon_1.png
           alt="마음색칠 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -303,13 +312,13 @@ const ServiceIcons = {
     </div>
   ),
   document: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_5.png"  // ← public/img/icon_1.png
           alt="활동자료 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -317,13 +326,13 @@ const ServiceIcons = {
     </div>
   ),
   cap: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_6.png"  // ← public/img/icon_1.png
           alt="허브 아카데미 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -331,13 +340,13 @@ const ServiceIcons = {
     </div>
   ),
   clipboard: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_7.png"  // ← public/img/icon_1.png
           alt="시니어 종합검사 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
@@ -345,13 +354,13 @@ const ServiceIcons = {
     </div>
   ),
   heart: (
-    <div className="w-16 h-16 flex items-center justify-center mx-auto">
-      <div className="relative w-16 h-16">
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
         <Image
           src="/img/icon_8.png"  // ← public/img/icon_1.png
           alt="사회공헌 아이콘"
           fill
-          sizes="64px"
+          sizes="96px"
           className="object-contain drop-shadow-md"
           priority
         />
