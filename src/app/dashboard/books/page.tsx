@@ -243,6 +243,7 @@ export default function BooksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CompletedWork | null>(null);
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return books;
@@ -484,13 +485,31 @@ export default function BooksPage() {
     [selectedBook]
   );
 
+  const deleteBook = async (bookId: string) => {
+    try {
+      const res = await fetch(`/api/works/${bookId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setBooks((prev) => prev.filter((b) => b.id !== bookId));
+      if (selectedBook?.id === bookId) {
+        setSelectedBook(null);
+        setCurrentPage(0);
+        setIsPlaying(false);
+        setIsFullscreen(false);
+      }
+      setPendingDelete(null);
+    } catch (e) {
+      alert("삭제 중 오류가 발생했습니다.");
+      console.error(e);
+    }
+  };
+
   /* ========== 로딩 화면 ========== */
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center space-y-6">
           <div className="relative">
-            <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-600 rounded-full animate-pulse mx-auto" />
+            <div className="w-16 h-16 bg-teal-600 rounded-full animate-pulse mx-auto" />
             <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-white animate-spin" />
           </div>
           <div className="space-y-2">
@@ -535,34 +554,7 @@ export default function BooksPage() {
       {/* Header - Main page style */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 py-3">
-          <div className="flex items-center justify-end mb-2">
-            <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
-              <a className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</a>
-            </nav>
-          </div>
           <div className="flex items-center justify-between gap-8">
-            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
-              <div className="h-12 w-12 flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
-                  <g transform="translate(24,24)">
-                    <circle cx="0" cy="0" r="3" fill="currentColor" />
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                  </g>
-                </svg>
-              </div>
-              <div className="text-center">
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
-              </div>
-            </div>
             <div className="flex-1 text-center">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-3">
                 <Library className="h-6 w-6 text-teal-500" />
@@ -582,7 +574,7 @@ export default function BooksPage() {
               </div>
               <Link
                 href="/dashboard/create-work"
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-400 to-teal-600 text-white font-semibold rounded-full hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-full hover:shadow-lg transform hover:scale-105 transition-all duration-200"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 새 작품 만들기
@@ -595,21 +587,48 @@ export default function BooksPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-12 space-y-16">
         <ShelfSection
-          title="📖 현재 읽고 있는 작품"
+          title="현재 읽고 있는 작품"
           subtitle="진행 중인 작품들"
           books={grouped.current.slice(0, 8)}
           onSelect={setSelectedBook}
           variant="current"
+          onDeleteRequest={(b) => setPendingDelete(b)}
         />
 
         <ShelfSection
-          title="✨ 완성된 작품"
+          title="완성된 작품"
           subtitle="소중한 추억이 담긴 완성작들"
           books={grouped.finished.slice(0, 16)}
           onSelect={setSelectedBook}
           variant="finished"
+          onDeleteRequest={(b) => setPendingDelete(b)}
         />
       </main>
+
+      {/* Delete Confirm Modal */}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setPendingDelete(null)}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">작품 삭제</h3>
+            <p className="text-sm text-gray-600 mb-6">정말로 &quot;{pendingDelete.title}&quot; 작품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => deleteBook(pendingDelete.id)}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200">
@@ -659,17 +678,19 @@ function ShelfSection({
   books,
   onSelect,
   variant,
+  onDeleteRequest,
 }: {
   title: string;
   subtitle: string;
   books: CompletedWork[];
   onSelect: (b: CompletedWork) => void;
   variant: "current" | "next" | "finished";
+  onDeleteRequest: (b: CompletedWork) => void;
 }) {
-  const gradientColors = {
-    current: "from-teal-400 to-teal-600",
-    next: "from-teal-500 to-teal-700",
-    finished: "from-teal-600 to-teal-800",
+  const solidColors = {
+    current: "bg-teal-600",
+    next: "bg-teal-700",
+    finished: "bg-teal-800",
   };
 
   return (
@@ -678,7 +699,7 @@ function ShelfSection({
         <div className="flex items-center justify-between mb-6">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-600 rounded-lg">
+              <div className="p-2 bg-teal-600 rounded-lg">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
               {title}
@@ -693,9 +714,7 @@ function ShelfSection({
 
         {books.length === 0 ? (
           <div className="text-center py-16 space-y-4">
-            <div
-              className={`w-16 h-16 bg-gradient-to-r ${gradientColors[variant]} rounded-2xl mx-auto flex items-center justify-center opacity-50`}
-            >
+            <div className={`w-16 h-16 ${solidColors[variant]} rounded-2xl mx-auto flex items-center justify-center opacity-50`}>
               <BookOpen className="h-8 w-8 text-white" />
             </div>
             <div className="space-y-2">
@@ -711,6 +730,7 @@ function ShelfSection({
                 book={book}
                 onClick={() => onSelect(book)}
                 variant={variant}
+                onDeleteRequest={() => onDeleteRequest(book)}
               />
             ))}
           </div>
@@ -727,24 +747,29 @@ function BookCover({
   book,
   onClick,
   variant,
+  onDeleteRequest,
 }: {
   book: CompletedWork;
   onClick: () => void;
   variant: "current" | "next" | "finished";
+  onDeleteRequest: () => void;
 }) {
   const cover = book.coverImage;
 
-  const gradientColors = {
-    current: "from-teal-400 via-teal-500 to-teal-600",
-    next: "from-teal-500 via-teal-600 to-teal-700",
-    finished: "from-teal-600 via-teal-700 to-teal-800",
+  const placeholderColors = {
+    current: "bg-teal-600",
+    next: "bg-teal-700",
+    finished: "bg-teal-800",
   };
 
   return (
-    <button
+    <div
       onClick={onClick}
       className="group relative aspect-[3/4] rounded-3xl overflow-hidden bg-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 border border-gray-200"
       title={book.title}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
     >
       {cover ? (
         <div className="relative w-full h-full">
@@ -757,26 +782,35 @@ function BookCover({
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </div>
       ) : (
-        <div
-          className={`w-full h-full bg-gradient-to-br ${gradientColors[variant]} flex flex-col items-center justify-center relative overflow-hidden`}
-        >
-          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
-          <div className="relative z-10 text-center space-y-4">
-            <Calendar className="h-12 w-12 text-white/90 mx-auto" />
-            <div className="px-4">
-              <p className="text-white font-semibold text-sm leading-tight line-clamp-2">
-                {book.title}
-              </p>
-            </div>
+        <div className={`w-full h-full ${placeholderColors[variant]} flex flex-col items-center justify-center relative overflow-hidden`}>
+          <Calendar className="h-12 w-12 text-white/90 mx-auto" />
+          <div className="px-4 mt-2">
+            <p className="text-white font-semibold text-sm leading-tight line-clamp-2">
+              {book.title}
+            </p>
           </div>
-          <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-          <div className="absolute -top-4 -left-4 w-12 h-12 bg-white/10 rounded-full" />
         </div>
       )}
 
       {/* 페이지 수 배지 */}
       <div className="absolute top-3 right-3 px-2 py-1 bg-black/70 backdrop-blur text-white text-xs font-semibold rounded-full">
         {book._count.pages}p
+      </div>
+
+      {/* 삭제 버튼 */}
+      <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDeleteRequest();
+          }}
+          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded"
+          aria-label="작품 삭제"
+          title="작품 삭제"
+        >
+          삭제
+        </button>
       </div>
 
       {/* 호버 정보 */}
@@ -786,7 +820,7 @@ function BookCover({
           {new Date(book.updatedAt).toLocaleDateString()}
         </p>
       </div>
-    </button>
+    </div>
   );
 }
 

@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 'use client';
 
 import {
@@ -96,30 +97,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Main Header Row */}
-          <div className="flex items-center justify-between gap-8">
-            {/* Brand Logo */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
-              <div className="h-12 w-12 flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
-                  <g transform="translate(24,24)">
-                    <circle cx="0" cy="0" r="3" fill="currentColor" />
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                  </g>
-                </svg>
-              </div>
-              <div className="text-center">
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
-              </div>
-            </div>
-
+          <div className="flex items-center justify-center">
             {/* Search Bar */}
-            <div className="flex-1 max-w-xl mx-8">
+            <div className="w-full max-w-xl">
               <div className="relative">
                 <input
                   type="search"
@@ -137,13 +117,6 @@ export default function DashboardPage() {
                     <path d="m21 21-4.35-4.35"/>
                   </svg>
                 </button>
-              </div>
-            </div>
-
-            {/* User Profile */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="w-8 h-8 bg-teal-400 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
               </div>
             </div>
           </div>
@@ -223,8 +196,8 @@ export default function DashboardPage() {
                       {item.title}
                     </h3>
                     
-                    <p className="text-sm leading-relaxed text-gray-600">
-                      {item.description}
+                    <p className="text-sm leading-relaxed text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      {item.subtitle}
                     </p>
                     
                     <div className="mt-4 flex items-center justify-center text-teal-600 group-hover:text-teal-700 transition-colors">

@@ -321,7 +321,7 @@ export default function WorkspacePage() {
             <div className="flex items-center gap-3 flex-shrink-0">
               <Link
                 href="/dashboard/create-work"
-                className="group bg-gradient-to-r from-teal-400 to-teal-600 hover:from-teal-500 hover:to-teal-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-teal-500/25"
+                className="group bg-teal-600 hover:bg-teal-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg"
                 title="새 작품 만들기"
               >
                 <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-200" />
@@ -452,7 +452,7 @@ export default function WorkspacePage() {
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link
                       href="/dashboard/create-work"
-                      className="group/btn inline-flex items-center px-8 py-4 bg-gradient-to-r from-teal-400 to-teal-600 text-white rounded-2xl hover:from-teal-500 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-teal-500/25 hover:scale-105 font-medium text-lg"
+                      className="group/btn inline-flex items-center px-8 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl transition-all duration-300 shadow-lg hover:scale-105 font-medium text-lg"
                     >
                       <Plus className="mr-2 h-6 w-6 group-hover/btn:rotate-90 transition-transform duration-200" />
                       첫 작품 만들기
@@ -489,13 +489,13 @@ export default function WorkspacePage() {
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 font-medium"
+                      className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition-all duration-200 font-medium"
                     >
                       검색 초기화
                     </button>
                     <button
                       onClick={() => setStatusFilter("all")}
-                      className="px-6 py-3 bg-gradient-to-r from-teal-100 to-teal-200 text-teal-700 rounded-xl hover:from-teal-200 hover:to-teal-300 transition-all duration-200 font-medium"
+                      className="px-6 py-3 bg-teal-200 hover:bg-teal-300 text-teal-800 rounded-xl transition-all duration-200 font-medium"
                     >
                       필터 초기화
                     </button>
@@ -525,9 +525,6 @@ export default function WorkspacePage() {
             
             <div className="relative z-10">
               <h3 className="text-2xl font-bold mb-8 flex items-center group-hover:text-teal-700 transition-colors duration-300">
-                <div className="p-3 bg-gradient-to-r from-teal-400 to-teal-600 rounded-2xl mr-4 group-hover:scale-110 transition-transform duration-300">
-                  <Briefcase className="h-6 w-6 text-white" />
-                </div>
                 📊 작업실 통계
                 <div className="ml-auto w-3 h-3 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full animate-pulse"></div>
               </h3>
@@ -704,7 +701,7 @@ function WorkCard({ work, onDelete }: WorkCardProps) {
           {/* Enhanced Continue Button */}
           <Link
             href={`/dashboard/create-work/${work.id}`}
-            className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-teal-400 to-teal-600 text-white rounded-2xl hover:from-teal-500 hover:to-teal-700 transition-all duration-300 group/btn shadow-lg hover:shadow-teal-500/25 hover:scale-105 font-medium"
+            className="w-full flex items-center justify-center px-6 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl transition-all duration-300 group/btn shadow-lg hover:scale-105 font-medium"
           >
             <span className="mr-2">작업 계속하기</span>
             <ChevronRight className="h-5 w-5 group-hover/btn:translate-x-1 transition-transform duration-200" />

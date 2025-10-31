@@ -9,18 +9,24 @@ import {
   Bold,
   CheckCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   FileText,
+  HelpCircle,
   Image as ImageIcon,
   Italic,
   Layout,
   Link,
+  Menu,
   Plus,
+  Redo,
   Save,
   Strikethrough,
   Trash2,
   Type,
   Underline,
+  Undo,
   Upload,
   X,
 } from "lucide-react";
@@ -434,14 +440,14 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "center-image",
           type: "placeholder",
-          position: { x: 20, y: 105, width: 260, height: 200 },
+          position: { x: 20, y: 105, width: 255, height: 200 },
           style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
           placeholder: "사진을 드래그하여 여기에 추가해 주세요",
         } as PlaceholderElement,
         {
           id: "bottom-text",
           type: "text",
-          position: { x: 20, y: 325, width: 260, height: 80 },
+          position: { x: 20, y: 325, width: 245, height: 80 },
           style: { fontSize: 14, textAlign: "center", color: "#555555" },
           content: "텍스트를 입력해 주세요",
           placeholder: "하단 텍스트를 입력하세요",
@@ -543,7 +549,7 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "bottom-image",
           type: "placeholder",
-          position: { x: 20, y: 165, width: 280, height: 120 },
+          position: { x: 20, y: 165, width: 260, height: 120 },
           style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
           placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
         } as PlaceholderElement,
@@ -802,7 +808,7 @@ const PAGE_TEMPLATES: Template[] = [
         {
           id: "center-image",
           type: "placeholder",
-          position: { x: 20, y: 145, width: 280, height: 180 },
+          position: { x: 20, y: 145, width: 260, height: 180 },
           style: { backgroundColor: "#f0f0f0", border: "2px dashed #cccccc", borderRadius: 8 },
           placeholder: "사진을 드롭하여 이미지를 추가 해 주세요.",
         } as PlaceholderElement,
@@ -1128,6 +1134,9 @@ export default function CreateWorkPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [showFullPage, setShowFullPage] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1275,6 +1284,12 @@ export default function CreateWorkPage() {
 
   /* ---------- Template Functions ---------- */
   const applyTemplate = (template: Template) => {
+    // 첫 페이지는 반드시 표지 템플릿을 선택하도록 강제
+    if (work.pages.length === 0 && template.type !== "cover") {
+      setSaveError("먼저 표지 템플릿을 선택해주세요.");
+      setShowTemplateSelector(true);
+      return;
+    }
     const newPage: Page = {
       id: String(Date.now()),
       type: "template",
@@ -1286,17 +1301,27 @@ export default function CreateWorkPage() {
       const isCoverTemplate = template.type === "cover";
       if (isCoverTemplate) {
         const hasExistingCover = prev.pages.length > 0 && prev.pages[0].type === "template" && prev.pages[0].templateId?.startsWith("cover");
+        const newPages = hasExistingCover ? [newPage, ...prev.pages.slice(1)] : [newPage, ...prev.pages];
         return {
           ...prev,
           coverTemplateId: template.id,
-          pages: hasExistingCover ? [newPage, ...prev.pages.slice(1)] : [newPage, ...prev.pages],
+          pages: newPages,
           updatedAt: new Date(),
         };
       }
-      return { ...prev, pages: [...prev.pages, newPage], updatedAt: new Date() };
+      const newPages = [...prev.pages, newPage];
+      return { ...prev, pages: newPages, updatedAt: new Date() };
     });
 
-    setSelectedPageId(newPage.id);
+    // Calculate the new page index after adding
+    const newIndex = template.type === "cover" 
+      ? (work.pages.length > 0 && work.pages[0].templateId?.startsWith("cover") ? 0 : 0)
+      : work.pages.length;
+    
+    setTimeout(() => {
+      setSelectedPageId(newPage.id);
+      setCurrentPageIndex(newIndex);
+    }, 100);
     setShowTemplateSelector(false);
   };
 
@@ -1355,7 +1380,10 @@ export default function CreateWorkPage() {
   const cancelDeletePage = () => setPendingDeleteId(null);
 
   useEffect(() => {
-    setSelectedElementId(null);
+    // 페이지가 바뀔 때만 선택된 요소 초기화 (불필요한 렌더 방지)
+    if (selectedElementId !== null) {
+      setSelectedElementId(null);
+    }
   }, [selectedPageId]);
 
   /* ---------- Save and Preview ---------- */
@@ -1503,6 +1531,28 @@ const completeWork = async (): Promise<string | null> => {
     }
   };
 
+  // Sync currentPageIndex with selectedPageId (only when changed)
+  useEffect(() => {
+    if (!selectedPageId || work.pages.length === 0) return;
+    const index = work.pages.findIndex(p => p.id === selectedPageId);
+    if (index !== -1 && index !== currentPageIndex) {
+      setCurrentPageIndex(index);
+    }
+  }, [selectedPageId, work.pages]);
+
+  // Update selectedPageId from index only on initial/empty state to avoid loops
+  useEffect(() => {
+    if (work.pages.length === 0) return;
+    if (!selectedPageId) {
+      const id = work.pages[currentPageIndex]?.id;
+      if (id) setSelectedPageId(id);
+    }
+  }, [currentPageIndex, work.pages, selectedPageId]);
+
+  const currentPage = work.pages[currentPageIndex] || null;
+  const leftPage = currentPageIndex > 0 ? work.pages[currentPageIndex - 1] : null;
+  const rightPage = currentPage;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1515,578 +1565,478 @@ const completeWork = async (): Promise<string | null> => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Header - Main page style */}
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 py-3">
-          <div className="flex items-center justify-end mb-2">
-            <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</a>
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard/life-graph">인생그래프</a>
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard/workspace">작업실</a>
-              <a className="hover:text-gray-900 transition-colors" href="/dashboard/books">라이브러리</a>
-              <a className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</a>
-            </nav>
-          </div>
-          <div className="flex items-center justify-between gap-8">
-            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
-              <div className="h-12 w-12 flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
-                  <g transform="translate(24,24)">
-                    <circle cx="0" cy="0" r="3" fill="currentColor" />
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                  </g>
-                </svg>
-              </div>
-              <div className="text-center">
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
-              </div>
-            </div>
-            <div className="flex-1 text-center">
-              <input
-                type="text"
-                value={work.title}
-                onChange={(e) =>
-                  setWork((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                    updatedAt: new Date(),
-                  }))
-                }
-                className="text-2xl font-bold bg-transparent border-none outline-none text-center focus:bg-white focus:px-4 focus:rounded-2xl focus:border-2 focus:border-teal-300 transition-all"
-                placeholder="작품 제목을 입력하세요"
-              />
-            </div>
-            <div className="flex items-center space-x-3">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+      {/* Top Toolbar - Project style */}
+      <header className="sticky top-0 z-30 bg-white border-b-2 border-gray-200 shadow-md">
+        <div className="mx-auto max-w-[1920px] px-3 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left Tools */}
+            <div className="flex items-center gap-2">
               <button
-                onClick={previewWork}
-                className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-                disabled={isSaving}
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
+                title="템플릿 메뉴"
               >
-                <Eye className="mr-2 h-4 w-4" />
-                {isSaving ? "저장 중..." : "미리보기"}
+                <Menu className="w-5 h-5 text-gray-700" />
               </button>
-              
               <button
-                onClick={saveAndContinue}
-                disabled={isSaving}
-                className="flex items-center px-4 py-2 bg-gradient-to-r from-teal-400 to-teal-600 text-white rounded-full hover:from-teal-500 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
+                title="실행 취소"
               >
-                <Save className="mr-2 h-4 w-4" />
-                {isSaving ? "저장 중..." : "저장"}
+                <Undo className="w-5 h-5 text-gray-700" />
               </button>
+              <button
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
+                title="다시 실행"
+              >
+                <Redo className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
 
+            {/* Center - Page Info */}
+            <div className="flex items-center gap-3">
               <button
-                onClick={completeWork}
-                disabled={isSaving || work.pages.length === 0}
-                className="flex items-center px-6 py-2 bg-gradient-to-r from-green-400 to-green-600 text-white rounded-full hover:from-green-500 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-                title={work.pages.length === 0 ? "페이지를 추가한 후 완료할 수 있습니다" : "작품을 완료하고 라이브러리에 추가"}
+                onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 2))}
+                disabled={currentPageIndex === 0}
+                className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-medium text-gray-700 shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="이전 페이지로"
               >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {isSaving ? "처리 중..." : "작품 완료"}
+                <ChevronLeft className="w-4 h-4" />
+                이전페이지
+              </button>
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg shadow-md">
+                <Plus className="w-5 h-5 text-teal-600" />
+                <span className="text-base font-semibold text-gray-900">
+                  {work.pages.length > 0 ? `${currentPageIndex + 1} / ${work.pages.length}` : "0"}
+                </span>
+              </div>
+              <button
+                onClick={() => setCurrentPageIndex(Math.min(work.pages.length - 1, currentPageIndex + 2))}
+                disabled={currentPageIndex >= work.pages.length - 1}
+                className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-medium text-gray-700 shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="다음 페이지로"
+              >
+                다음페이지
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Right - Help */}
+            <button
+              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
+              title="도움말"
+            >
+              <HelpCircle className="w-5 h-5 text-gray-700" />
+            </button>
           </div>
 
           {saveError && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-3xl text-red-600 text-sm shadow-lg" role="alert">
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm shadow-lg" role="alert">
               {saveError}
             </div>
           )}
           {saveMessage && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-3xl text-green-700 text-sm shadow-lg" role="status">
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm shadow-lg" role="status">
               {saveMessage}
             </div>
           )}
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-3 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-          {/* Left Sidebar - Templates */}
-          <div className="lg:col-span-1 space-y-3">
-            {/* Cover Templates */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 p-3">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 bg-gradient-to-r from-teal-400 to-teal-600 rounded-full flex items-center justify-center">
-                  <FileText className="h-3 w-3 text-white" />
-                </div>
-                <div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex relative overflow-hidden">
+        {/* Template Sidebar (Left) - Toggleable */}
+        {showTemplates && (
+          <aside className="w-64 bg-white border-r-2 border-gray-300 shadow-lg overflow-y-auto z-20">
+            <div className="p-4">
+              <div className="mb-4">
+                <input
+                  type="text"
+                  value={work.title}
+                  onChange={(e) =>
+                    setWork((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                      updatedAt: new Date(),
+                    }))
+                  }
+                  className="w-full text-lg font-bold bg-transparent border-b-2 border-gray-300 outline-none pb-2 focus:border-teal-400 transition-colors"
+                  placeholder="작품 제목"
+                />
+              </div>
+
+              {/* Cover Templates */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 bg-teal-600 rounded-full flex items-center justify-center">
+                    <FileText className="h-3 w-3 text-white" />
+                  </div>
                   <h3 className="text-sm font-bold text-gray-900">표지 템플릿</h3>
-                  <p className="text-xs text-gray-600">클릭하여 추가</p>
                 </div>
-              </div>
-              
-              {/* 표지 템플릿을 2열로 배치하여 스크롤 제거 */}
-              <div className="grid grid-cols-2 gap-2">
-                {COVER_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => applyTemplate(template)}
-                    className="group relative bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-teal-400 transition-all duration-200 hover:shadow-lg p-1"
-                    type="button"
-                  >
-                    {/* 템플릿 미리보기 영역 */}
-                    <div className="aspect-[3/4] bg-white rounded-lg mb-1 overflow-hidden">
-                      <div className="w-full h-full">
-                      <TemplatePreview template={template} />
-                    </div>
-                      </div>
-                    
-                    {/* 템플릿 정보 */}
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{template.name}</p>
-                    </div>
-                    
-                    {/* 호버 오버레이 */}
-                    <div className="absolute inset-0 bg-teal-500/0 group-hover:bg-teal-500/10 transition-all rounded-xl" />
-                  </button>
-                ))}
-              </div>
-              
-              {/* 추가 안내 텍스트 */}
-              <div className="mt-2 p-1.5 bg-teal-50 rounded-lg border border-teal-200">
-                <p className="text-xs text-teal-700 text-center">
-                  💡 클릭하여 추가
-                </p>
-              </div>
-            </div>
-
-            {/* Page Templates */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 p-3">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                  <Layout className="h-3 w-3 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">내지 템플릿</h3>
-                  <p className="text-xs text-gray-600">클릭하여 추가</p>
-                </div>
-              </div>
-              
-              {/* 내지 템플릿을 2열로 배치하여 스크롤 제거 */}
-              <div className="grid grid-cols-2 gap-2">
-                {PAGE_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => applyTemplate(template)}
-                    className="group relative bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-400 transition-all duration-200 hover:shadow-lg p-1"
-                    type="button"
-                  >
-                    {/* 템플릿 미리보기 영역 */}
-                    <div className="aspect-[3/4] bg-white rounded-lg mb-1 overflow-hidden">
-                      <div className="w-full h-full">
-                      <TemplatePreview template={template} />
-                    </div>
-                      </div>
-                    
-                    {/* 템플릿 정보 */}
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{template.name}</p>
-                    </div>
-                    
-                    {/* 호버 오버레이 */}
-                    <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-all rounded-xl" />
-                  </button>
-                ))}
-              </div>
-              
-              {/* 추가 안내 텍스트 */}
-              <div className="mt-2 p-1.5 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-700 text-center">
-                  💡 클릭하여 추가
-                </p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Main Content - Pages */}
-          <div className="lg:col-span-4">
-            {/* 페이지 편집 도구 */}
-            <div className="sticky top-4 z-10 mb-4 p-4 bg-gray-50 rounded-2xl border border-gray-200 shadow-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
-                  <Type className="h-3 w-3 text-white" />
-                </div>
-                <h3 className="text-sm font-bold text-gray-900">페이지 편집 도구</h3>
-              </div>
-              {selectedPage ? (
-                <div className="text-xs text-gray-600 mb-4">페이지의 텍스트나 이미지 영역을 직접 클릭하여 편집하세요.</div>
-              ) : (
-                <div className="text-xs text-gray-600 mb-4">편집할 페이지를 선택하세요.</div>
-              )}
-                {selectedElementId && (
-                  <div className="p-3 bg-teal-50 rounded-xl border border-teal-200">
-                    <p className="text-xs text-teal-800 font-semibold"><strong>선택된 요소:</strong> {selectedElementId}</p>
-                    <p className="text-xs text-teal-600 mt-1">이미지 영역인 경우 사진 업로드 버튼을 클릭하여 이미지를 추가할 수 있습니다.</p>
-                    
-                    {/* 텍스트 요소인 경우 텍스트 편집 툴바 */}
-                    {selectedPage && selectedPage.content.elements && (() => {
-                      const selectedElement = selectedPage.content.elements?.find(el => el.id === selectedElementId);
-                      if (selectedElement && selectedElement.type === 'text') {
-                        const updateElementStyle = (styleUpdates: Partial<BaseTemplateElement['style']>) => {
-                          if (selectedPage && selectedPage.content.elements) {
-                            const updatedElements = selectedPage.content.elements.map(el => 
-                              el.id === selectedElementId 
-                                ? { ...el, style: { ...el.style, ...styleUpdates } }
-                                : el
-                            );
-                            setWork((prev) => ({
-                              ...prev,
-                              pages: prev.pages.map((page) =>
-                                page.id === selectedPage.id
-                                  ? { ...page, content: { ...page.content, elements: updatedElements } }
-                                  : page
-                              ),
-                              updatedAt: new Date(),
-                            }));
-                          }
-                        };
-
-
-                        return (
-                          <div className="mt-3 p-3 bg-white rounded-lg border border-teal-300">
-                            <h4 className="text-xs font-semibold text-teal-800 mb-3">텍스트 편집</h4>
-                            
-                            {/* 텍스트 편집 툴바 */}
-                            <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
-                              {/* 폰트 패밀리 선택 */}
-                              <div className="relative flex-shrink-0">
-                                <select
-                                  value={selectedElement.style?.fontFamily || "Nanum Gothic"}
-                                  onChange={(e) => updateElementStyle({ fontFamily: e.target.value })}
-                                  className="appearance-none bg-white border border-gray-300 rounded px-2 py-1 text-xs pr-6 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[100px]"
-                                >
-                                  {FONT_FAMILIES.map((font) => (
-                                    <option key={font.value} value={font.value}>
-                                      {font.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500 pointer-events-none" />
-                              </div>
-
-                              {/* 폰트 크기 선택 */}
-                              <div className="relative flex-shrink-0">
-                                <select
-                                  value={selectedElement.style?.fontSize || 12}
-                                  onChange={(e) => updateElementStyle({ fontSize: parseInt(e.target.value) })}
-                                  className="appearance-none bg-white border border-gray-300 rounded px-2 py-1 text-xs pr-6 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[80px]"
-                                >
-                                  <optgroup label="본문">
-                                    {BODY_FONT_SIZES.map((size) => (
-                                      <option key={size} value={size}>
-                                        {size}pt
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                  <optgroup label="표기">
-                                    {TITLE_FONT_SIZES.map((size) => (
-                                      <option key={size} value={size}>
-                                        {size}pt
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                </select>
-                                <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500 pointer-events-none" />
-                              </div>
-
-                              {/* 구분선 */}
-                              <div className="w-px h-4 bg-gray-300"></div>
-
-                              {/* 텍스트 서식 버튼들 */}
-                              <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                                  onClick={() => updateElementStyle({ 
-                                    fontWeight: selectedElement.style?.fontWeight === 'bold' ? 'normal' : 'bold' 
-                                  })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.fontWeight === 'bold' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="굵게"
-                                >
-                                  <Bold className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => updateElementStyle({ 
-                                    fontStyle: selectedElement.style?.fontStyle === 'italic' ? 'normal' : 'italic' 
-                                  })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.fontStyle === 'italic' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="기울임"
-                                >
-                                  <Italic className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => updateElementStyle({ 
-                                    textDecoration: selectedElement.style?.textDecoration === 'underline' ? 'none' : 'underline' 
-                                  })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.textDecoration === 'underline' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="밑줄"
-                                >
-                                  <Underline className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => updateElementStyle({ 
-                                    textDecoration: selectedElement.style?.textDecoration === 'line-through' ? 'none' : 'line-through' 
-                                  })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.textDecoration === 'line-through' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="취소선"
-                                >
-                                  <Strikethrough className="h-3 w-3" />
-                                </button>
-                </div>
-
-                              {/* 구분선 */}
-                              <div className="w-px h-4 bg-gray-300"></div>
-
-                              {/* 텍스트 정렬 버튼들 */}
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                <button
-                                  onClick={() => updateElementStyle({ textAlign: 'left' })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.textAlign === 'left' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="왼쪽 정렬"
-                                >
-                                  <AlignLeft className="h-3 w-3" />
-              </button>
-                                <button
-                                  onClick={() => updateElementStyle({ textAlign: 'center' })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.textAlign === 'center' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="가운데 정렬"
-                                >
-                                  <AlignCenter className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => updateElementStyle({ textAlign: 'right' })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.textAlign === 'right' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="오른쪽 정렬"
-                                >
-                                  <AlignRight className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => updateElementStyle({ textAlign: 'justify' })}
-                                  className={`p-1.5 rounded hover:bg-gray-200 transition-colors ${
-                                    selectedElement.style?.textAlign === 'justify' ? 'bg-gray-300' : ''
-                                  }`}
-                                  title="양쪽 정렬"
-                                >
-                                  <AlignJustify className="h-3 w-3" />
-                                </button>
-            </div>
-                              
-                              {/* 링크 버튼 */}
-                              <div className="flex items-center gap-1 border-l border-gray-300 pl-2">
-                                <button
-                                  onClick={() => setShowLinkDialog(true)}
-                                  className="p-1.5 rounded hover:bg-gray-200 transition-colors"
-                                  title="링크 추가"
-                                >
-                                  <Link className="h-3 w-3" />
-                                </button>
-          </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                )}
-                
-                {/* 링크 추가 다이얼로그 */}
-                {showLinkDialog && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl p-6 w-96 max-w-[90vw] shadow-xl">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                          <Link className="h-3 w-3 text-white" />
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900">링크 추가</h3>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            링크 텍스트
-                          </label>
-                          <input
-                            type="text"
-                            value={linkText}
-                            onChange={(e) => setLinkText(e.target.value)}
-                            placeholder="링크로 표시될 텍스트"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            URL
-                          </label>
-                          <input
-                            type="url"
-                            value={linkUrl}
-                            onChange={(e) => setLinkUrl(e.target.value)}
-                            placeholder="https://example.com"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-3 mt-6">
-                        <button
-                          onClick={() => {
-                            setShowLinkDialog(false);
-                            setLinkUrl("");
-                            setLinkText("");
-                          }}
-                          className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                          취소
-                        </button>
-                        <button
-                          onClick={addLink}
-                          disabled={!linkUrl.trim() || !linkText.trim()}
-                          className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          추가
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 p-3">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
-                    <Layout className="h-3 w-3 text-white" />
-                  </div>
-                  <h2 className="text-sm font-bold text-gray-900">페이지 ({work.pages.length}개)</h2>
-                </div>
-              </div>
-
-              {work.pages.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Layout className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900 mb-1">템플릿을 선택해보세요</h3>
-                  <p className="text-xs text-gray-600 mb-4 max-w-md mx-auto">왼쪽에서 원하는 템플릿을 클릭하여 페이지를 추가하세요</p>
-                  <div className="flex justify-center gap-3">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <div className="w-1.5 h-1.5 bg-teal-400 rounded-full"></div>
-                      표지
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                      내지
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {work.pages.map((page, index) => (
-                    <div
-                      key={page.id}
-                      className={`relative group border-2 rounded-3xl overflow-hidden transition-all max-w-lg mx-auto shadow-lg hover:shadow-xl ${selectedPageId === page.id ? "border-teal-400 shadow-xl" : "border-gray-200 hover:border-gray-300"}`}
-                      onClick={() => setSelectedPageId(page.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") setSelectedPageId(page.id);
-                      }}
-                    >
-                      <div className="absolute top-3 left-3 bg-teal-500 text-white text-xs px-3 py-1 rounded-full z-10 font-semibold">{index + 1}</div>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          requestDeletePage(page.id);
-                        }}
-                        className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all z-10 shadow-lg"
-                        type="button"
-                        aria-label="페이지 삭제"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-
-                      <div className="aspect-[3/4] bg-white cursor-pointer relative" style={{ minHeight: "500px" }}>
-                        <div className="absolute inset-0">
-                          <PagePreview page={page} />
-                        </div>
-                        
-                        {selectedPageId === page.id && page.content.elements && page.content.elements.length > 0 && (
-                          <div className="absolute inset-0 bg-white">
-                            <EditablePageView
-                              page={page}
-                              onUpdateElement={(elementId, content) => updateElementContent(page.id, elementId, content)}
-                              onUpdateElementImage={(elementId, imageUrl) => updateElementImage(page.id, elementId, imageUrl)}
-                              onSelectElement={setSelectedElementId}
-                              selectedElementId={selectedElementId}
-                              fileInputRef={fileInputRef}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-4 bg-gray-50 border-t">
-                        <p className="text-sm font-semibold text-center text-gray-900">
-                          {page.templateId?.startsWith("cover")
-                            ? "표지"
-                            : page.templateId
-                            ? PAGE_TEMPLATES.find((t) => t.id === page.templateId)?.name ||
-                              COVER_TEMPLATES.find((t) => t.id === page.templateId)?.name ||
-                              "템플릿 페이지"
-                            : `${page.type} 페이지`}
-                        </p>
-                        <p className="text-xs text-gray-500 text-center mt-1">{page.templateId ? `템플릿: ${page.templateId}` : `타입: ${page.type}`}</p>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="max-w-lg mx-auto">
+                <div className="grid grid-cols-2 gap-2">
+                  {COVER_TEMPLATES.map((template) => (
                     <button
-                      onClick={() => setShowTemplateSelector(true)}
-                      className="w-full aspect-[3/4] border-2 border-dashed border-gray-300 rounded-3xl hover:border-teal-400 hover:bg-teal-50 transition-all flex items-center justify-center group shadow-lg hover:shadow-xl"
-                      style={{ minHeight: "500px" }}
+                      key={template.id}
+                      onClick={() => applyTemplate(template)}
+                      className="group relative bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-teal-400 transition-all duration-200 hover:shadow-lg p-1"
                       type="button"
                     >
+                      <div className="aspect-[3/4] bg-white rounded-lg mb-1 overflow-hidden">
+                        <TemplatePreview template={template} />
+                      </div>
                       <div className="text-center">
-                        <div className="w-12 h-12 bg-gradient-to-r from-teal-100 to-teal-200 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:from-teal-200 group-hover:to-teal-300 transition-all">
-                          <Plus className="h-6 w-6 text-teal-600" />
-                        </div>
-                        <p className="text-sm font-semibold text-gray-600 group-hover:text-teal-600">새 페이지 추가</p>
-                        <p className="text-xs text-gray-500 mt-1">템플릿을 선택하세요</p>
+                        <p className="text-xs font-semibold text-gray-900 truncate">{template.name}</p>
                       </div>
                     </button>
-                  </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
-                    </div>
+              {/* Page Templates */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                    <Layout className="h-3 w-3 text-white" />
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900">내지 템플릿</h3>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAGE_TEMPLATES.filter((t) => t.id !== "page-complex").map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => applyTemplate(template)}
+                      className="group relative bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-400 transition-all duration-200 hover:shadow-lg p-1"
+                      type="button"
+                    >
+                      <div className="aspect-[3/4] bg-white rounded-lg mb-1 overflow-hidden">
+                        <TemplatePreview template={template} />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{template.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-      </main>
+          </aside>
+        )}
+
+        {/* Main Canvas Area */}
+        <main className="flex-1 flex items-start justify-center bg-white border-2 border-gray-300 rounded-2xl m-4 pt-3 pb-8 px-8 overflow-auto shadow-lg">
+          <div className="w-full max-w-6xl mx-auto">
+            <div className="flex items-start justify-center gap-6">
+              {/* Left page (now editable when selected) */}
+              <div
+                className="relative w-[420px] h-[630px] bg-white border border-gray-300 rounded-lg shadow cursor-pointer"
+                onClick={() => { if (leftPage) setSelectedPageId(leftPage.id); }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && leftPage) setSelectedPageId(leftPage.id); }}
+                title={leftPage ? '왼쪽 페이지 선택' : undefined}
+              >
+                {leftPage ? (
+                  <div className="absolute inset-0">
+                    {leftPage.content.elements && leftPage.content.elements.length > 0 && selectedPageId === leftPage.id ? (
+                      <EditablePageView
+                        page={leftPage}
+                        onUpdateElement={(elementId, content) => updateElementContent(leftPage.id, elementId, content)}
+                        onUpdateElementImage={(elementId, imageUrl) => updateElementImage(leftPage.id, elementId, imageUrl)}
+                        onSelectElement={setSelectedElementId}
+                        selectedElementId={selectedElementId}
+                        fileInputRef={fileInputRef}
+                      />
+                    ) : (
+                      <PagePreview page={leftPage} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">왼쪽 페이지 없음</div>
+                )}
+              </div>
+
+              {/* Right page (current - editable) or placeholder if none */}
+              <div className="relative w-[420px] h-[630px] bg-white border-2 border-gray-400 rounded-lg shadow-xl">
+                {rightPage ? (
+                  rightPage.content.elements && rightPage.content.elements.length > 0 ? (
+                    <div className="absolute inset-0">
+                      {selectedPageId === rightPage.id ? (
+                        <EditablePageView
+                          page={rightPage}
+                          onUpdateElement={(elementId, content) => updateElementContent(rightPage.id, elementId, content)}
+                          onUpdateElementImage={(elementId, imageUrl) => updateElementImage(rightPage.id, elementId, imageUrl)}
+                          onSelectElement={setSelectedElementId}
+                          selectedElementId={selectedElementId}
+                          fileInputRef={fileInputRef}
+                        />
+                      ) : (
+                        <PagePreview page={rightPage} />
+                      )}
+                    </div>
+                  ) : (
+                    <PagePreview page={rightPage} />
+                  )
+                ) : (
+                  <button
+                    onClick={() => setShowTemplateSelector(true)}
+                    className="absolute inset-0 flex items-center justify-center text-gray-600 hover:text-teal-700"
+                    type="button"
+                    title="템플릿 추가"
+                  >
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-teal-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Plus className="h-6 w-6 text-teal-700" />
+                      </div>
+                      <p className="text-sm font-semibold">페이지를 추가하세요</p>
+                      <p className="text-xs text-gray-500 mt-1">템플릿을 선택하여 오른쪽 페이지를 채울 수 있습니다</p>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Side Edit Panel - visible when a text element is selected */}
+              {selectedPage && selectedElementId && (() => {
+                const selectedElement = selectedPage.content.elements?.find(el => el.id === selectedElementId);
+                const updateElementStyle = (styleUpdates: Partial<BaseTemplateElement['style']>) => {
+                  if (!selectedPage || !selectedPage.content.elements) return;
+                  const updatedElements = selectedPage.content.elements.map(el =>
+                    el.id === selectedElementId ? { ...el, style: { ...el.style, ...styleUpdates } } : el
+                  );
+                  setWork(prev => ({
+                    ...prev,
+                    pages: prev.pages.map(page => page.id === selectedPage.id
+                      ? { ...page, content: { ...page.content, elements: updatedElements } }
+                      : page
+                    ),
+                    updatedAt: new Date(),
+                  }));
+                };
+                if (selectedElement && selectedElement.type === 'text') {
+                  return (
+                    <div className="hidden xl:block w-64 p-3 bg-white border border-gray-200 rounded-xl shadow sticky top-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">페이지 편집 도구</h4>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">글꼴</label>
+                          <select
+                            value={selectedElement.style?.fontFamily || 'Nanum Gothic'}
+                            onChange={e => updateElementStyle({ fontFamily: e.target.value })}
+                            className="w-full appearance-none bg-white border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          >
+                            {FONT_FAMILIES.map((font) => (
+                              <option key={font.value} value={font.value}>{font.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">크기</label>
+                          <select
+                            value={selectedElement.style?.fontSize || 12}
+                            onChange={e => updateElementStyle({ fontSize: parseInt(e.target.value) })}
+                            className="w-full appearance-none bg-white border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          >
+                            <optgroup label="본문">
+                              {BODY_FONT_SIZES.map(size => (
+                                <option key={size} value={size}>{size}pt</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="표기">
+                              {TITLE_FONT_SIZES.map(size => (
+                                <option key={size} value={size}>{size}pt</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => updateElementStyle({ fontWeight: selectedElement.style?.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.fontWeight === 'bold' ? 'bg-gray-200' : ''}`} title="굵게"><Bold className="h-3 w-3" /></button>
+                          <button onClick={() => updateElementStyle({ fontStyle: selectedElement.style?.fontStyle === 'italic' ? 'normal' : 'italic' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.fontStyle === 'italic' ? 'bg-gray-200' : ''}`} title="기울임"><Italic className="h-3 w-3" /></button>
+                          <button onClick={() => updateElementStyle({ textDecoration: selectedElement.style?.textDecoration === 'underline' ? 'none' : 'underline' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.textDecoration === 'underline' ? 'bg-gray-200' : ''}`} title="밑줄"><Underline className="h-3 w-3" /></button>
+                          <button onClick={() => updateElementStyle({ textDecoration: selectedElement.style?.textDecoration === 'line-through' ? 'none' : 'line-through' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.textDecoration === 'line-through' ? 'bg-gray-200' : ''}`} title="취소선"><Strikethrough className="h-3 w-3" /></button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => updateElementStyle({ textAlign: 'left' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.textAlign === 'left' ? 'bg-gray-200' : ''}`} title="왼쪽 정렬"><AlignLeft className="h-3 w-3" /></button>
+                          <button onClick={() => updateElementStyle({ textAlign: 'center' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.textAlign === 'center' ? 'bg-gray-200' : ''}`} title="가운데 정렬"><AlignCenter className="h-3 w-3" /></button>
+                          <button onClick={() => updateElementStyle({ textAlign: 'right' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.textAlign === 'right' ? 'bg-gray-200' : ''}`} title="오른쪽 정렬"><AlignRight className="h-3 w-3" /></button>
+                          <button onClick={() => updateElementStyle({ textAlign: 'justify' })} className={`p-1.5 rounded hover:bg-gray-100 ${selectedElement.style?.textAlign === 'justify' ? 'bg-gray-200' : ''}`} title="양쪽 정렬"><AlignJustify className="h-3 w-3" /></button>
+                        </div>
+
+                        <div className="pt-1">
+                          <button onClick={() => setShowLinkDialog(true)} className="w-full py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300" title="링크 추가">링크 추가</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          </div>
+        </main>
+
+        {/* Right Tool Sidebars */}
+          <div className="absolute right-4 top-20 flex gap-3 z-10">
+          {/* Primary Tools - Colored Circles */}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-14 h-14 bg-teal-600 hover:bg-teal-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+              title="이미지 추가"
+            >
+              <Upload className="w-6 h-6 text-white" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file || !selectedPageId || !selectedElementId) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+                  if (dataUrl) updateElementImage(selectedPageId, selectedElementId, dataUrl);
+                };
+                reader.readAsDataURL(file);
+                e.currentTarget.value = '';
+              }}
+            />
+            <button
+              onClick={() => setShowTemplateSelector(true)}
+              className="w-14 h-14 bg-teal-600 hover:bg-teal-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+              title="페이지 추가"
+            >
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="w-14 h-14 bg-teal-600 hover:bg-teal-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+              title="템플릿 메뉴"
+            >
+              <Layout className="w-6 h-6 text-white" />
+            </button>
+            <button
+              onClick={() => previewWork()}
+              className="w-14 h-14 bg-gray-700 hover:bg-gray-800 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+              title="미리보기"
+            >
+              <Eye className="w-6 h-6 text-white" />
+            </button>
+            <button
+              onClick={() => {
+                if (currentPage) {
+                  const pageIndex = work.pages.findIndex(p => p.id === currentPage.id);
+                  if (pageIndex >= 0) requestDeletePage(currentPage.id);
+                }
+              }}
+              className="w-14 h-14 bg-gray-600 hover:bg-gray-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+              title="삭제"
+            >
+              <Trash2 className="w-6 h-6 text-white" />
+            </button>
+          </div>
+
+          {/* Secondary Tools - White Circles */}
+          <div className="flex flex-col gap-3">
+            <button
+              className="w-14 h-14 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all border-2 border-gray-200"
+              title="채팅"
+            >
+              <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">💬</span>
+              </div>
+            </button>
+            <button
+              className="w-14 h-14 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all border-2 border-gray-200"
+              title="이모지"
+            >
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg">😊</span>
+              </div>
+            </button>
+            <button
+              className="w-14 h-14 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all border-2 border-gray-200"
+              title="음악"
+            >
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">♪</span>
+              </div>
+            </button>
+            <button
+              className="w-14 h-14 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all border-2 border-gray-200"
+              title="팔레트"
+            >
+              <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-yellow-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">🎨</span>
+              </div>
+            </button>
+            <button
+              className="w-14 h-14 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all border-2 border-gray-200"
+              title="AI 도우미"
+            >
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">AI</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div className="sticky bottom-0 z-20 bg-white border-t-2 border-gray-300 shadow-lg">
+        <div className="mx-auto max-w-[1920px] px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 1))}
+              disabled={currentPageIndex === 0}
+              className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="이전 페이지"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </button>
+            
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-teal-500 rounded"></div>
+              <span className="text-sm font-semibold text-gray-700">
+                {work.pages.length > 0 ? `${currentPageIndex + 1} / ${work.pages.length}` : "0"}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => setCurrentPageIndex(Math.min(work.pages.length - 1, currentPageIndex + 1))}
+              disabled={currentPageIndex >= work.pages.length - 1}
+              className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="다음 페이지"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-700" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Right Action Buttons */}
+      <div className="fixed bottom-20 right-6 z-30 flex flex-col gap-3">
+        <button
+          onClick={() => {
+            saveAndContinue();
+            router.push('/dashboard/workspace');
+          }}
+          className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold shadow-lg hover:shadow-xl transition-all"
+        >
+          내 작업실로 보내기
+        </button>
+        <button
+          onClick={completeWork}
+          disabled={isSaving || work.pages.length === 0}
+          className="px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          title={work.pages.length === 0 ? "페이지를 추가한 후 완료할 수 있습니다" : "작품을 완료하고 라이브러리에 추가"}
+        >
+          만든 북 보기로 보내기
+        </button>
+      </div>
 
       {/* Template Selector Modal */}
       {showTemplateSelector && (
@@ -2095,10 +2045,10 @@ const completeWork = async (): Promise<string | null> => {
             <div className="p-8">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
                     <Layout className="h-5 w-5 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900">페이지 템플릿 선택</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{work.pages.length === 0 ? "표지 템플릿 선택" : "페이지 템플릿 선택"}</h2>
                 </div>
                 <button onClick={() => setShowTemplateSelector(false)} className="p-3 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors" type="button">
                   <X className="h-6 w-6" />
@@ -2106,7 +2056,7 @@ const completeWork = async (): Promise<string | null> => {
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {PAGE_TEMPLATES.map((template) => (
+                {(work.pages.length === 0 ? COVER_TEMPLATES : PAGE_TEMPLATES.filter((t) => t.id !== "page-complex")).map((template) => (
                   <button
                     key={template.id}
                     onClick={() => applyTemplate(template)}
@@ -2137,7 +2087,7 @@ const completeWork = async (): Promise<string | null> => {
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-md mx-4">
             <div className="p-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-red-400 to-red-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
                   <Trash2 className="h-5 w-5 text-white" />
               </div>
                 <h4 className="text-xl font-bold text-gray-900">페이지 삭제</h4>
@@ -2145,7 +2095,7 @@ const completeWork = async (): Promise<string | null> => {
               <p className="text-gray-600 mb-6">이 페이지를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
               <div className="flex justify-end gap-3">
                 <button onClick={cancelDeletePage} className="px-6 py-3 rounded-full border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all font-medium" type="button">취소</button>
-                <button onClick={confirmDeletePage} className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transition-all shadow-lg hover:shadow-xl font-medium" type="button">삭제</button>
+                <button onClick={confirmDeletePage} className="px-6 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white transition-all shadow-lg hover:shadow-xl font-medium" type="button">삭제</button>
               </div>
             </div>
           </div>

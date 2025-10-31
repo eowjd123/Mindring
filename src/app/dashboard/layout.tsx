@@ -60,91 +60,72 @@ const navigationItems = [
 ];
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  // 기존 requireAuth 함수 사용 (미인증 시 자동으로 /login으로 redirect)
   const user = await requireAuth();
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-gray-200 shadow-sm flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-b to-pink-500 rounded-lg flex items-center justify-center">
-              <img
-                src="/img/OBJECTS.png"
-                alt="Objects Icon"
-                className="w-6 h-6 object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navbar - Senior-friendly */}
+      <header className="sticky top-0 z-20 bg-white border-b-2 border-gray-300 shadow-sm">
+        <div className="mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+          {/* Main Navbar - Single Row */}
+          <div className="flex items-center justify-between gap-3 py-4 overflow-x-auto">
+            {/* Logo */}
+            <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-b to-pink-500 rounded-lg flex items-center justify-center">
+                <img
+                  src="/img/OBJECTS.png"
+                  alt="Objects Icon"
+                  className="w-6 h-6 object-contain"
+                />
+              </div>
+              <div>
                 <img
                   src="/img/maind.png"
                   alt="Digital Note"
                   className="h-6 object-contain"
                 />
-              </h1>
-            </div>
-          </div>
-        </div>
+              </div>
+            </Link>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          {navigationItems.map((item) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="group flex items-start space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+            {/* Navigation Menu - Single Row */}
+            <nav className="flex items-center gap-2 lg:gap-3 flex-1 justify-center overflow-x-auto">
+              {navigationItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="flex items-center gap-2 px-3 py-2.5 text-base font-medium text-gray-700 bg-white rounded-lg border-2 border-gray-200 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 transition-all whitespace-nowrap flex-shrink-0"
+                  >
+                    <IconComponent className="w-5 h-5 flex-shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* User Info & Logout */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg whitespace-nowrap">
+                <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-base font-medium text-gray-900">{user.name || "사용자"}</span>
+              </div>
+              <a
+                href="/api/auth/logout"
+                className="flex items-center gap-2 px-4 py-2.5 text-base font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors whitespace-nowrap"
               >
-                <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                  <IconComponent className="w-5 h-5 text-gray-600 group-hover:text-orange-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-orange-600">
-                    {item.name}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User Profile & Logout */}
-        <div className="p-4 border-t border-gray-100 space-y-3">
-          {/* User Info */}
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user.name || "사용자"}
-              </p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                <LogOut className="w-5 h-5 flex-shrink-0" />
+                <span>로그아웃</span>
+              </a>
             </div>
           </div>
-
-          {/* Logout Button */}
-          <a
-            href="/api/auth/logout"
-            className="flex items-center space-x-3 w-full p-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors duration-200"
-          >
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-              <LogOut className="w-5 h-5 text-red-600" />
-            </div>
-            <span className="text-sm font-medium">로그아웃</span>
-          </a>
         </div>
-      </aside>
+      </header>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
+      {/* Page content */}
+      <main className="w-full max-w-none px-2 sm:px-3 py-4">{children}</main>
     </div>
   );
 }

@@ -452,100 +452,39 @@ function LifeGraphPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Header - Enhanced Design */}
-      <header className="sticky top-0 z-20 bg-gradient-to-r from-white/95 via-white/90 to-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 sm:py-5">
-          {/* Top Navigation Bar */}
-          <div className="flex items-center justify-end mb-3 sm:mb-4">
-            <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600">
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
-                title={isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환"}
-                aria-label={isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환"}
-              >
-                {isDarkMode ? (
-                  <Sun className="h-4 w-4 group-hover:rotate-180 transition-transform duration-300" />
-                ) : (
-                  <Moon className="h-4 w-4 group-hover:rotate-12 transition-transform duration-300" />
-                )}
-              </button>
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
-                title="대시보드로 이동"
-                aria-label="대시보드로 이동"
-              >
-                <Home className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-              </button>
-              <button
-                onClick={handleLogout}
-                className="group p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
-                title="로그아웃"
-                aria-label="로그아웃"
-              >
-                <LogOut className="h-4 w-4 group-hover:text-red-600 transition-colors duration-200" />
-              </button>
-            </nav>
-          </div>
-
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
+        <div className="mx-auto max-w-[1920px] px-2 sm:px-3 py-2">
           {/* Main Header Row */}
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8">
-            {/* Brand Logo */}
-            <div className="flex items-center gap-4 flex-shrink-0">
-              <div className="relative">
-                <div className="h-12 w-12 flex items-center justify-center bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl shadow-lg">
-                  <svg width="32" height="32" viewBox="0 0 48 48" className="text-white">
-                    <g transform="translate(24,24)">
-                      <circle cx="0" cy="0" r="3" fill="currentColor" />
-                      <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                      <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                      <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                      <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                      <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                      <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                    </g>
-                  </svg>
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full animate-pulse"></div>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
-              </div>
-            </div>
-
+          <div className="flex items-center justify-between gap-2">
             {/* Page Title */}
-            <div className="flex-1 text-center lg:text-center">
-              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-teal-50 to-blue-50 px-6 py-3 rounded-2xl border border-teal-100">
-                <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-600 rounded-xl">
-                  <Heart className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">인생그래프</h2>
-                  <p className="text-sm text-gray-600">당신의 소중한 추억들을 아름다운 그래프로</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-teal-600 rounded-lg flex items-center justify-center shadow-sm">
+                <Heart className="h-5 w-5 text-white" />
+              </div>
+              <div className="leading-tight">
+                <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">소중한 추억을 한눈에 보는 그래프</h2>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => router.push("/dashboard/life-graph/dashboard")}
-                className="group bg-gradient-to-r from-teal-400 to-teal-600 hover:from-teal-500 hover:to-teal-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-teal-500/25"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 text-sm font-semibold shadow-sm"
                 title="감정 통계 보기"
                 aria-label="감정 통계 대시보드로 이동"
               >
-                <BarChart3 className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
-                <span className="hidden sm:inline">감정통계</span>
+                <BarChart3 className="h-4 w-4" />
+                감정통계
               </button>
               <button
                 onClick={() => setShowForm(true)}
-                className="group bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-purple-500/25"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm font-semibold shadow-sm"
                 title="새로운 추억 추가"
                 aria-label="새로운 추억 추가하기"
               >
-                <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-200" />
-                <span className="hidden sm:inline">추억 추가</span>
+                <Plus className="h-4 w-4" />
+                추억 추가
               </button>
             </div>
           </div>
@@ -553,10 +492,10 @@ function LifeGraphPage() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-12">
+      <main className="w-full max-w-none px-2 sm:px-3 py-1">
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-3xl mb-8 shadow-lg">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl mb-2 shadow-lg">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
@@ -577,310 +516,106 @@ function LifeGraphPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* User Info Card */}
-            <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <User className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full animate-pulse"></div>
-                  </div>
+        {/* User Info - Top */}
+        <div className="mb-1">
+          {/* User Info Horizontal */}
+          <div className="bg-white rounded-xl p-2 shadow-lg border-2 border-gray-200">
+            <div className="flex items-center mb-1">
+              <h3 className="text-xl font-bold text-gray-900">사용자 정보</h3>
+            </div>
+            {isEditing ? (
+              <div className="space-y-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">사용자 정보</h3>
-                    <p className="text-sm text-gray-500">프로필 관리</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="group/edit p-3 hover:bg-teal-50 rounded-xl transition-all duration-200 disabled:opacity-50 hover:scale-105"
-                  disabled={isSaving}
-                  title={isEditing ? "편집 완료" : "정보 편집"}
-                  aria-label={isEditing ? "편집 완료" : "사용자 정보 편집"}
-                >
-                  <Edit2 className="h-4 w-4 text-gray-600 group-hover/edit:text-teal-600 transition-colors duration-200" />
-                </button>
-              </div>
-
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      이름 *
-                    </label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">이름</label>
                     <input
                       type="text"
                       value={userInfo.name}
-                      onChange={(e) =>
-                        setUserInfo((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200"
+                      onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
                       placeholder="이름을 입력하세요"
-                      maxLength={50}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">
-                      출생년도 *
-                    </label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">출생년도</label>
                     <input
                       type="number"
-                      value={userInfo.birthYear}
-                      onChange={(e) =>
-                        setUserInfo((prev) => ({
-                          ...prev,
-                          birthYear: parseInt(e.target.value) || 0,
-                        }))
-                      }
-                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200"
+                      value={userInfo.birthYear || ""}
+                      onChange={(e) => setUserInfo({ ...userInfo, birthYear: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                      placeholder="예: 1950"
                       min={1900}
                       max={new Date().getFullYear()}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">
-                      출생지
-                    </label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">출생지</label>
                     <input
                       type="text"
                       value={userInfo.location}
-                      onChange={(e) =>
-                        setUserInfo((prev) => ({
-                          ...prev,
-                          location: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-full focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200"
+                      onChange={(e) => setUserInfo({ ...userInfo, location: e.target.value })}
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
                       placeholder="출생지를 입력하세요"
-                      maxLength={50}
                     />
                   </div>
+                </div>
+                <div className="flex gap-3">
                   <button
                     onClick={saveUserInfo}
                     disabled={isSaving}
-                    className="w-full bg-gradient-to-r from-teal-400 to-teal-600 text-white py-3 px-4 rounded-full hover:from-teal-500 hover:to-teal-700 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-lg font-medium"
+                    className="flex-1 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-base font-semibold transition-colors disabled:opacity-50"
                   >
-                    {isSaving ? "저장 중..." : "저장"}
+                    저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditing(false);
+                      loadData();
+                    }}
+                    className="flex-1 px-4 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-xl text-base font-semibold transition-colors"
+                  >
+                    취소
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="group/info flex items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl hover:from-teal-50 hover:to-teal-100/50 transition-all duration-200 border border-gray-200/50">
-                    <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-600 rounded-lg mr-3 group-hover/info:scale-110 transition-transform duration-200">
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">이름</p>
-                      <p className="font-semibold text-gray-900">
-                        {userInfo.name || "이름을 설정해주세요"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="group/info flex items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl hover:from-teal-50 hover:to-teal-100/50 transition-all duration-200 border border-gray-200/50">
-                    <div className="p-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-lg mr-3 group-hover/info:scale-110 transition-transform duration-200">
-                      <Calendar className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">출생년도</p>
-                      <p className="font-semibold text-gray-900">
-                        {userInfo.birthYear && !isNaN(userInfo.birthYear)
-                          ? `${userInfo.birthYear}년생`
-                          : "출생년도를 설정해주세요"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="group/info flex items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl hover:from-teal-50 hover:to-teal-100/50 transition-all duration-200 border border-gray-200/50">
-                    <div className="p-2 bg-gradient-to-r from-purple-400 to-purple-600 rounded-lg mr-3 group-hover/info:scale-110 transition-transform duration-200">
-                      <span className="text-white text-sm">📍</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">출생지</p>
-                      <p className="font-semibold text-gray-900">{userInfo.location || "출생지를 설정해주세요"}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Stats Dashboard Button */}
-            {/* <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white/60'} backdrop-blur-lg rounded-2xl p-6 shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-white/20'}`}>
-                            <button
-                                onClick={() => router.push("/dashboard/life-graph/dashboard")}
-                                disabled={isSaving}
-                                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-lg font-medium"
-                            >
-                                <BarChart3 className="mr-3 h-5 w-5" />
-                                <span>감정통계 그래프</span>
-                                <Star className="ml-2 h-4 w-4" />
-                            </button>
-                        </div> */}
-
-            {/* Events List */}
-            <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                    <Heart className="h-5 w-5 text-white" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center">
+                    <User className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">추억 목록</h3>
-                    <p className="text-sm text-gray-500">기록된 인생 이벤트</p>
+                    <p className="text-sm text-gray-500">이름</p>
+                    <p className="font-bold text-lg text-gray-900">{userInfo.name || "이름을 설정해주세요"}</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1.5 bg-gradient-to-r from-teal-400 to-teal-600 text-white text-sm rounded-full font-medium shadow-lg">
-                    {events.length}개
-                  </span>
-                  {events.length > 0 && (
-                    <div className="w-2 h-2 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full animate-pulse"></div>
-                  )}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">출생년도</p>
+                    <p className="font-bold text-lg text-gray-900">{userInfo.birthYear && !isNaN(userInfo.birthYear) ? `${userInfo.birthYear}년생` : "출생년도를 설정해주세요"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
+                    <span className="text-white text-base">📍</span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">출생지</p>
+                    <p className="font-bold text-lg text-gray-900">{userInfo.location || "출생지를 설정해주세요"}</p>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-                {events
-                  .filter(
-                    (event) =>
-                      typeof event.year === "number" && !isNaN(event.year)
-                  )
-                  .sort((a, b) => {
-                    return (
-                      a.year - b.year ||
-                      (a.month ?? 0) - (b.month ?? 0) ||
-                      (a.day ?? 0) - (b.day ?? 0)
-                    );
-                  })
-                  .reverse()
-                  .map((event, index) => (
-                    <div
-                      key={`event-${event.id}-${index}`}
-                      className="group/event bg-gradient-to-r from-gray-50/80 to-gray-100/50 hover:from-teal-50/80 hover:to-teal-100/50 border border-gray-200/50 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-teal-200"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center mb-3">
-                            <div className="relative mr-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-white to-gray-50 rounded-xl flex items-center justify-center shadow-sm border border-gray-200/50">
-                                <span className="text-2xl">
-                                  {emotionConfig[event.emotion].label}
-                                </span>
-                              </div>
-                              <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                                emotionConfig[event.emotion].color === '#10B981' ? 'bg-emerald-400' :
-                                emotionConfig[event.emotion].color === '#3B82F6' ? 'bg-blue-400' :
-                                emotionConfig[event.emotion].color === '#6B7280' ? 'bg-gray-400' :
-                                emotionConfig[event.emotion].color === '#F59E0B' ? 'bg-amber-400' :
-                                'bg-red-400'
-                              }`}></div>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-sm text-gray-800">
-                                  {event.year}
-                                  {event.month
-                                    ? `.${String(event.month).padStart(2, "0")}`
-                                    : ""}
-                                  {event.day
-                                    ? `.${String(event.day).padStart(2, "0")}`
-                                    : ""}
-                                </span>
-                                <div className="flex items-center space-x-1">
-                                  {[...Array(5)].map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className={`w-2 h-2 rounded-full ${
-                                        i < emotionConfig[event.emotion].value
-                                          ? emotionConfig[event.emotion].color === '#10B981' ? 'bg-emerald-400' :
-                                            emotionConfig[event.emotion].color === '#3B82F6' ? 'bg-blue-400' :
-                                            emotionConfig[event.emotion].color === '#6B7280' ? 'bg-gray-400' :
-                                            emotionConfig[event.emotion].color === '#F59E0B' ? 'bg-amber-400' :
-                                            'bg-red-400'
-                                          : 'bg-gray-200'
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                              <div
-                                className={`h-1.5 w-full bg-gradient-to-r ${
-                                  emotionConfig[event.emotion].gradient
-                                } rounded-full opacity-60`}
-                              ></div>
-                            </div>
-                          </div>
-                          <p className="font-semibold text-gray-900 mb-2 group-hover/event:text-teal-700 transition-colors duration-200">
-                            {event.title}
-                          </p>
-                          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                            {event.description}
-                          </p>
-                        </div>
-                        <div className="flex space-x-1 ml-3 opacity-0 group-hover/event:opacity-100 transition-all duration-200">
-                          <button
-                            onClick={() => {
-                              setEditingEvent(event);
-                              setShowForm(true);
-                            }}
-                            disabled={isSaving}
-                            className="p-2.5 hover:bg-teal-100 rounded-xl transition-all duration-200 disabled:opacity-50 hover:scale-110"
-                            title="추억 수정"
-                            aria-label="추억 수정하기"
-                          >
-                            <Edit2 className="h-4 w-4 text-teal-600" />
-                          </button>
-                          <button
-                            onClick={() => deleteEvent(event.id)}
-                            disabled={isSaving}
-                            className="p-2.5 hover:bg-red-100 rounded-xl transition-all duration-200 disabled:opacity-50 hover:scale-110"
-                            title="추억 삭제"
-                            aria-label="추억 삭제하기"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                {events.length === 0 && (
-                  <div className="text-center py-16">
-                    <div className="relative mb-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto shadow-lg">
-                        <Heart className="h-10 w-10 text-gray-400" />
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full animate-pulse"></div>
-                    </div>
-                    <h3 className="text-xl font-bold mb-3 text-gray-900">아직 추억이 없습니다</h3>
-                    <p className="text-gray-600 mb-8 max-w-sm mx-auto leading-relaxed">
-                      인생의 소중한 순간들을 기록하여<br />
-                      아름다운 그래프를 만들어보세요
-                    </p>
-                    <button
-                      onClick={() => setShowForm(true)}
-                      className="group bg-gradient-to-r from-teal-400 to-teal-600 hover:from-teal-500 hover:to-teal-700 text-white px-8 py-3 rounded-2xl hover:shadow-lg transition-all duration-200 text-sm font-medium hover:scale-105 shadow-lg"
-                      title="첫 번째 추억 추가하기"
-                      aria-label="첫 번째 추억 추가하기"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-200" />
-                        추억 추가하기
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
+        </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
+        {/* Main Content - Graph and Events Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+          {/* Graph - Left (2/3 width) */}
+          <div className="lg:col-span-2">
             {showForm ? (
               <EventForm
                 event={editingEvent}
@@ -901,6 +636,168 @@ function LifeGraphPage() {
                 _isDarkMode={isDarkMode}
               />
             )}
+          </div>
+
+          {/* Events List - Right (1/3 width) */}
+          <div className="lg:col-span-1">
+            {/* Events List */}
+            <div className="bg-white rounded-xl p-2 shadow-lg border-2 border-gray-200 hover:shadow-xl transition-all duration-300 group">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-purple-600 rounded-xl">
+                    <Heart className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">추억 목록</h3>
+                    <p className="text-base text-gray-500 mt-1">기록된 인생 이벤트</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-4 py-2 bg-teal-600 text-white text-base rounded-full font-semibold shadow-lg">
+                    {events.length}개
+                  </span>
+                  {events.length > 0 && (
+                    <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1 max-h-96 overflow-y-auto custom-scrollbar">
+                {events
+                  .filter(
+                    (event) =>
+                      typeof event.year === "number" && !isNaN(event.year)
+                  )
+                  .sort((a, b) => {
+                    return (
+                      a.year - b.year ||
+                      (a.month ?? 0) - (b.month ?? 0) ||
+                      (a.day ?? 0) - (b.day ?? 0)
+                    );
+                  })
+                  .reverse()
+                  .map((event, index) => (
+                    <div
+                      key={`event-${event.id}-${index}`}
+                      className="group/event bg-gray-50 hover:bg-teal-50 border-2 border-gray-200 hover:border-teal-300 rounded-xl p-2 transition-all duration-300 hover:shadow-lg"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center mb-1">
+                            <div className="relative mr-2">
+                              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border-2 border-gray-200">
+                                <span className="text-2xl">
+                                  {emotionConfig[event.emotion].label}
+                                </span>
+                              </div>
+                              <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border border-white ${
+                                emotionConfig[event.emotion].color === '#10B981' ? 'bg-emerald-500' :
+                                emotionConfig[event.emotion].color === '#3B82F6' ? 'bg-blue-500' :
+                                emotionConfig[event.emotion].color === '#6B7280' ? 'bg-gray-500' :
+                                emotionConfig[event.emotion].color === '#F59E0B' ? 'bg-amber-500' :
+                                'bg-red-500'
+                              }`}></div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-bold text-sm text-gray-800">
+                                  {event.year}
+                                  {event.month
+                                    ? `.${String(event.month).padStart(2, "0")}`
+                                    : ""}
+                                  {event.day
+                                    ? `.${String(event.day).padStart(2, "0")}`
+                                    : ""}
+                                </span>
+                                <div className="flex items-center space-x-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <div
+                                      key={i}
+                                      className={`w-2.5 h-2.5 rounded-full ${
+                                        i < emotionConfig[event.emotion].value
+                                          ? emotionConfig[event.emotion].color === '#10B981' ? 'bg-emerald-500' :
+                                            emotionConfig[event.emotion].color === '#3B82F6' ? 'bg-blue-500' :
+                                            emotionConfig[event.emotion].color === '#6B7280' ? 'bg-gray-500' :
+                                            emotionConfig[event.emotion].color === '#F59E0B' ? 'bg-amber-500' :
+                                            'bg-red-500'
+                                          : 'bg-gray-200'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <div
+                                className={`h-2 w-full rounded-full ${
+                                  emotionConfig[event.emotion].color === '#10B981' ? 'bg-emerald-500' :
+                                  emotionConfig[event.emotion].color === '#3B82F6' ? 'bg-blue-500' :
+                                  emotionConfig[event.emotion].color === '#6B7280' ? 'bg-gray-500' :
+                                  emotionConfig[event.emotion].color === '#F59E0B' ? 'bg-amber-500' :
+                                  'bg-red-500'
+                                } opacity-60`}
+                              ></div>
+                            </div>
+                          </div>
+                          <p className="font-bold text-base text-gray-900 mb-1 group-hover/event:text-teal-700 transition-colors duration-200">
+                            {event.title}
+                          </p>
+                          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                            {event.description}
+                          </p>
+                        </div>
+                        <div className="flex space-x-1 ml-2 opacity-0 group-hover/event:opacity-100 transition-all duration-200">
+                          <button
+                            onClick={() => {
+                              setEditingEvent(event);
+                              setShowForm(true);
+                            }}
+                            disabled={isSaving}
+                            className="p-1.5 hover:bg-teal-100 rounded-lg transition-all duration-200 disabled:opacity-50"
+                            title="추억 수정"
+                            aria-label="추억 수정하기"
+                          >
+                            <Edit2 className="h-4 w-4 text-teal-600" />
+                          </button>
+                          <button
+                            onClick={() => deleteEvent(event.id)}
+                            disabled={isSaving}
+                            className="p-1.5 hover:bg-red-100 rounded-lg transition-all duration-200 disabled:opacity-50"
+                            title="추억 삭제"
+                            aria-label="추억 삭제하기"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                {events.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="relative mb-6">
+                      <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto shadow-lg border-2 border-gray-200">
+                        <Heart className="h-12 w-12 text-gray-400" />
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-gray-900">아직 추억이 없습니다</h3>
+                    <p className="text-lg text-gray-600 mb-8 max-w-sm mx-auto leading-relaxed">
+                      인생의 소중한 순간들을 기록하여<br />
+                      아름다운 그래프를 만들어보세요
+                    </p>
+                    <button
+                      onClick={() => setShowForm(true)}
+                      className="bg-teal-600 hover:bg-teal-700 text-white px-10 py-4 rounded-2xl shadow-lg transition-colors text-base font-semibold"
+                      title="첫 번째 추억 추가하기"
+                      aria-label="첫 번째 추억 추가하기"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-5 w-5" />
+                        추억 추가하기
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -1016,29 +913,28 @@ function EventForm({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group">
-      <div className="flex items-center space-x-4 mb-8">
+    <div className="bg-white rounded-xl p-3 shadow-lg border-2 border-gray-200 hover:shadow-xl transition-all duration-300 group">
+      <div className="flex items-center space-x-2 mb-3">
         <div className="relative">
-          <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-            <Plus className="h-7 w-7 text-white" />
+          <div className="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+            <Plus className="h-6 w-6 text-white" />
           </div>
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full animate-pulse"></div>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900">
             {event ? "추억 수정하기" : "새로운 추억 추가하기"}
           </h2>
-          <p className="text-gray-600">
-            특별한 순간을 기록해보세요 ✨
+          <p className="text-sm text-gray-600 mt-0.5">
+            특별한 순간을 기록해보세요
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Date Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="group/input">
-            <label className="block text-sm font-semibold mb-3 text-gray-700">
+            <label className="block text-sm font-semibold mb-1 text-gray-700">
               년도 <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -1051,7 +947,7 @@ function EventForm({
                     year: parseInt(e.target.value) || 0,
                   }))
                 }
-                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-2xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
+                className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
                 min={1900}
                 max={2100}
                 required
@@ -1065,7 +961,7 @@ function EventForm({
           </div>
 
           <div className="group/input">
-            <label className="block text-sm font-semibold mb-3 text-gray-700">
+            <label className="block text-sm font-semibold mb-1 text-gray-700">
               월 (선택)
             </label>
             <div className="relative">
@@ -1081,7 +977,7 @@ function EventForm({
                         : parseInt(e.target.value) || 0,
                   }))
                 }
-                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-2xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
+                className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
                 min={1}
                 max={12}
                 disabled={isSubmitting || isDisabled}
@@ -1094,7 +990,7 @@ function EventForm({
           </div>
 
           <div className="group/input">
-            <label className="block text-sm font-semibold mb-3 text-gray-700">
+            <label className="block text-sm font-semibold mb-1 text-gray-700">
               일 (선택)
             </label>
             <div className="relative">
@@ -1110,7 +1006,7 @@ function EventForm({
                         : parseInt(e.target.value) || 0,
                   }))
                 }
-                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-2xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
+                className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
                 min={1}
                 max={31}
                 disabled={isSubmitting || isDisabled}
@@ -1125,7 +1021,7 @@ function EventForm({
 
         {/* Title Section */}
         <div className="group/input">
-          <label className="block text-sm font-semibold mb-3 text-gray-700">
+          <label className="block text-sm font-semibold mb-1 text-gray-700">
             추억 제목 <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -1135,7 +1031,7 @@ function EventForm({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-2xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
+              className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 hover:border-gray-400"
               placeholder="예: 대학교 입학, 첫 직장, 결혼 등"
               maxLength={100}
               required
@@ -1151,8 +1047,8 @@ function EventForm({
 
         {/* Emotion Section */}
         <div>
-          <label className="block text-sm font-semibold mb-4 text-gray-700">감정 선택</label>
-          <div className="grid grid-cols-5 gap-3">
+          <label className="block text-sm font-semibold mb-2 text-gray-700">감정 선택</label>
+          <div className="grid grid-cols-5 gap-2">
             {emotionEntries.map(([key, config]) => (
               <button
                 key={`emotion-${key}`}
@@ -1161,9 +1057,9 @@ function EventForm({
                   setFormData((prev) => ({ ...prev, emotion: key }))
                 }
                 disabled={isSubmitting || isDisabled}
-                className={`group/emotion p-4 rounded-2xl border-2 text-center transition-all duration-200 disabled:opacity-50 hover:scale-105 ${
+                className={`group/emotion p-2 rounded-xl border-2 text-center transition-all duration-200 disabled:opacity-50 ${
                   formData.emotion === key
-                    ? `border-teal-500 bg-gradient-to-br ${config.gradient} text-white shadow-lg scale-105`
+                    ? `border-teal-500 bg-teal-600 text-white shadow-lg`
                     : `border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100`
                 }`}
                 title={`${config.label} (${config.value}점)`}
@@ -1193,15 +1089,15 @@ function EventForm({
 
         {/* Description Section */}
         <div className="group/input">
-          <label className="block text-sm font-semibold mb-3 text-gray-700">상세 설명</label>
+          <label className="block text-sm font-semibold mb-1 text-gray-700">상세 설명</label>
           <div className="relative">
             <textarea
               value={formData.description}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, description: e.target.value }))
               }
-              className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-2xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 resize-none hover:border-gray-400"
-              rows={4}
+              className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all duration-200 resize-none hover:border-gray-400"
+              rows={3}
               maxLength={500}
               placeholder="이 시기에 대한 자세한 설명을 입력하세요..."
               disabled={isSubmitting || isDisabled}
@@ -1215,11 +1111,11 @@ function EventForm({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-2">
           <button
             type="submit"
             disabled={isSubmitting || isDisabled}
-            className="group/save flex-1 bg-gradient-to-r from-teal-400 to-teal-600 text-white py-4 px-6 rounded-2xl hover:from-teal-500 hover:to-teal-700 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-lg font-medium flex items-center justify-center"
+            className="group/save flex-1 bg-teal-600 hover:bg-teal-700 text-white py-2 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-lg font-medium flex items-center justify-center text-sm"
             title={event ? "추억 수정하기" : "새로운 추억 추가하기"}
             aria-label={event ? "추억 수정하기" : "새로운 추억 추가하기"}
           >
@@ -1239,7 +1135,7 @@ function EventForm({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting || isDisabled}
-            className="group/cancel flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-4 px-6 rounded-2xl transition-all duration-200 hover:scale-105 disabled:opacity-50 font-medium flex items-center justify-center"
+            className="group/cancel flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 font-medium flex items-center justify-center text-sm"
             title="작성 취소"
             aria-label="추억 작성 취소"
           >
@@ -1301,7 +1197,7 @@ function LifeGraphChart({
   };
 
   const graphPoints = generateGraphPoints();
-  const chartWidth = 900;
+  const chartWidth = 1600;
   const chartHeight = 500;
   const padding = 100;
 
@@ -1321,10 +1217,9 @@ function LifeGraphChart({
       <div className="bg-white rounded-3xl p-12 text-center shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300">
         <div className="py-16">
           <div className="relative mb-8">
-            <div className="w-28 h-28 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <div className="w-28 h-28 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto shadow-lg border-2 border-gray-200">
               <BarChart3 className="h-14 w-14 text-gray-400" />
             </div>
-            <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full animate-pulse"></div>
           </div>
           <h3 className="text-2xl font-bold mb-4 text-gray-900">
             추억을 추가하면 그래프가 나타납니다
@@ -1333,15 +1228,15 @@ function LifeGraphChart({
             인생의 소중한 순간들을 기록하여<br />
             아름다운 그래프로 만들어보세요
           </p>
-          <button
-            onClick={onAddEvent}
-            className="group bg-gradient-to-r from-teal-400 to-teal-600 hover:from-teal-500 hover:to-teal-700 text-white px-10 py-4 rounded-2xl hover:scale-105 shadow-lg font-medium flex items-center mx-auto transition-all duration-200 hover:shadow-teal-500/25"
-            title="첫 번째 추억 추가하기"
-            aria-label="첫 번째 추억 추가하기"
-          >
-            <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform duration-200" />
-            첫 번째 추억 추가하기
-          </button>
+            <button
+              onClick={onAddEvent}
+              className="bg-teal-600 hover:bg-teal-700 text-white px-10 py-4 rounded-2xl shadow-lg font-semibold flex items-center mx-auto transition-colors text-base"
+              title="첫 번째 추억 추가하기"
+              aria-label="첫 번째 추억 추가하기"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              첫 번째 추억 추가하기
+            </button>
         </div>
       </div>
     );
@@ -1350,30 +1245,29 @@ function LifeGraphChart({
   const n = graphPoints.length;
 
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group">
+    <div className="bg-white rounded-xl p-2 shadow-lg border-2 border-gray-200 hover:shadow-xl transition-all duration-300 group">
       {/* Chart Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gradient-to-r from-blue-400 to-purple-500 rounded-xl group-hover:scale-110 transition-transform duration-300">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-2">
+          <div className="p-1.5 bg-blue-600 rounded-lg">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">인생 그래프</h3>
-            <p className="text-sm text-gray-500">감정 변화 추이</p>
+            <h3 className="text-lg font-bold text-gray-900">인생 그래프</h3>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <span className="px-3 py-1.5 bg-gradient-to-r from-blue-400 to-purple-500 text-white text-sm rounded-full font-medium shadow-lg">
-            {graphPoints.length}개 포인트
+        <div className="flex items-center space-x-1">
+          <span className="px-2 py-1 bg-blue-600 text-white text-sm rounded-full font-semibold shadow-lg">
+            {graphPoints.length}개
           </span>
           {graphPoints.length > 0 && (
-            <div className="w-2 h-2 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           )}
         </div>
       </div>
 
       {/* Chart */}
-      <div className="overflow-x-auto mb-8">
+      <div className="overflow-x-auto mb-2">
         <div className="min-w-full flex justify-center">
           <svg
             width={chartWidth}
@@ -1565,7 +1459,7 @@ function LifeGraphChart({
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
         {[
           {
             label: "총 추억",
@@ -1612,33 +1506,22 @@ function LifeGraphChart({
         ].map((stat, index) => (
           <div
             key={index}
-            className={`group/stat bg-gradient-to-br ${stat.bgColor} rounded-2xl p-4 text-center hover:shadow-lg transition-all duration-200 hover:scale-105 border border-white/50`}
+            className={`group/stat bg-gradient-to-br ${stat.bgColor} rounded-xl p-2 text-center hover:shadow-lg transition-all duration-200 border border-white/50`}
           >
             <div
-              className={`w-12 h-12 bg-gradient-to-r ${stat.color} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover/stat:scale-110 transition-transform duration-200 shadow-lg`}
+              className={`w-8 h-8 bg-gradient-to-r ${stat.color} rounded-lg flex items-center justify-center mx-auto mb-1 shadow-lg`}
             >
-              <stat.icon className="h-6 w-6 text-white" />
+              <stat.icon className="h-4 w-4 text-white" />
             </div>
-            <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
-            <div className="text-sm text-gray-600 font-medium">
+            <div className="text-base font-bold text-gray-900 mb-0.5">{stat.value}</div>
+            <div className="text-xs text-gray-600 font-medium">
               {stat.label}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Add Event Button */}
-      <div className="text-center">
-        <button
-          onClick={onAddEvent}
-          className="group bg-gradient-to-r from-teal-400 to-teal-600 hover:from-teal-500 hover:to-teal-700 text-white px-8 py-4 rounded-2xl hover:scale-105 shadow-lg font-medium flex items-center mx-auto transition-all duration-200 hover:shadow-teal-500/25"
-          title="새로운 추억 추가하기"
-          aria-label="새로운 추억 추가하기"
-        >
-          <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform duration-200" />
-          새로운 추억 추가하기
-        </button>
-      </div>
+      {/* Add Event Button removed by request */}
 
     </div>
   );
