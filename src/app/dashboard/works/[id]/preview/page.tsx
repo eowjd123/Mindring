@@ -102,6 +102,8 @@ export default function WorkPreviewPage() {
   const [viewMode, setViewMode] = useState<'cover' | 'pages'>('cover');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pageTransitionDirection, setPageTransitionDirection] = useState<'forward' | 'backward' | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // API에서 작품 데이터 가져오기
   useEffect(() => {
@@ -207,24 +209,60 @@ export default function WorkPreviewPage() {
     return isFirstPageCover ? work.pages.slice(1) : work.pages;
   }, [work]);
 
+  // 인쇄 스펙에 맞는 페이지 비율 계산 (CSS aspectRatio는 가로/세로 비율)
+  // A4 세로: 210×297mm (가로×세로) → aspectRatio = 210/297 ≈ 0.707
+  // 신국판: 152×225mm (가로×세로) → aspectRatio = 152/225 ≈ 0.676
+  const pageAspectRatio = useMemo(() => {
+    if (!work?.printSpec?.paperSize) return 210 / 297; // 기본값: A4 세로
+    const size = work.printSpec.paperSize.toUpperCase();
+    if (size.includes('A4')) {
+      // A4 세로: 210×297mm (가로×세로)
+      return 210 / 297; // 약 0.707
+    } else if (size.includes('SHIN') || size.includes('신국판')) {
+      // 신국판: 152×225mm (가로×세로)
+      return 152 / 225; // 약 0.676
+    }
+    return 210 / 297; // 기본값: A4
+  }, [work?.printSpec?.paperSize]);
+
   // 표지에서 페이지로 전환 (표지 페이지 제외)
   const openBook = useCallback(() => {
     setViewMode('pages');
     setCurrentPageIndex(0);
   }, []);
 
-  // 페이지 네비게이션 (표지 제외된 페이지 기준)
+  // 페이지 네비게이션 (표지 제외된 페이지 기준) - 책 넘기는 효과 포함
   const goToNextPage = useCallback(() => {
-    if (contentPages && currentPageIndex < contentPages.length - 1) {
-      setCurrentPageIndex(currentPageIndex + 1);
+    if (contentPages && currentPageIndex < contentPages.length - 1 && !isTransitioning) {
+      setIsTransitioning(true);
+      setPageTransitionDirection('forward');
+      // 애니메이션 시작 후 페이지 인덱스 변경
+      setTimeout(() => {
+        setCurrentPageIndex(prev => prev + 1);
+      }, 50);
+      // 애니메이션 종료
+      setTimeout(() => {
+        setIsTransitioning(false);
+        setPageTransitionDirection(null);
+      }, 750); // 700ms 애니메이션 + 50ms 버퍼
     }
-  }, [contentPages, currentPageIndex]);
+  }, [contentPages, currentPageIndex, isTransitioning]);
 
   const goToPreviousPage = useCallback(() => {
-    if (currentPageIndex > 0) {
-      setCurrentPageIndex(currentPageIndex - 1);
+    if (currentPageIndex > 0 && !isTransitioning) {
+      setIsTransitioning(true);
+      setPageTransitionDirection('backward');
+      // 애니메이션 시작 후 페이지 인덱스 변경
+      setTimeout(() => {
+        setCurrentPageIndex(prev => prev - 1);
+      }, 50);
+      // 애니메이션 종료
+      setTimeout(() => {
+        setIsTransitioning(false);
+        setPageTransitionDirection(null);
+      }, 750); // 700ms 애니메이션 + 50ms 버퍼
     }
-  }, [currentPageIndex]);
+  }, [currentPageIndex, isTransitioning]);
 
   const goToPage = useCallback((index: number) => {
     if (contentPages && index >= 0 && index < contentPages.length) {
@@ -442,103 +480,73 @@ export default function WorkPreviewPage() {
   const currentPage = contentPages[currentPageIndex];
   const nextPage = contentPages[currentPageIndex + 1];
 
-  console.log('현재 페이지 정보:', { currentPage, nextPage, currentPageIndex, contentPagesLength: contentPages.length });
+  console.log('현재 페이지 정보:', { currentPage, nextPage, currentPageIndex, contentPagesLength: contentPages.length, pageAspectRatio });
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900 ${isFullscreen ? "fixed inset-0 z-50" : ""}`}>
-      {/* Header - Life Graph Style */}
+    <div className={`min-h-screen bg-gray-50 text-gray-900 flex flex-col ${isFullscreen ? "fixed inset-0 z-50" : ""}`}>
+      {/* Header - Simplified */}
       {!isFullscreen && (
-        <header className="sticky top-0 z-20 bg-gradient-to-r from-white/95 via-white/90 to-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 sm:py-4">
-            {/* Top Navigation Bar */}
-            <div className="flex items-center justify-end mb-2 sm:mb-3">
-              <nav className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600">
+        <header className="sticky top-0 z-20 bg-white border-b-2 border-gray-300 shadow-sm">
+          <div className="mx-auto max-w-[1920px] px-4 sm:px-6 py-3">
+            <div className="flex items-center justify-between gap-4">
+              {/* Left - Title */}
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
+                  <Book className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{work.title}</h2>
+                  <p className="text-sm text-gray-600">
+                    {viewMode === 'cover' ? '표지 보기' : `${contentPages.length}페이지 • ${currentPageIndex + 1}/${contentPages.length}페이지`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right - Actions */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => router.back()}
-                  className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   title="돌아가기"
                   aria-label="이전 페이지로 돌아가기"
                 >
-                  <X className="h-4 w-4 group-hover:rotate-90 transition-transform duration-200" />
+                  <X className="h-5 w-5 text-gray-700" />
                 </button>
-                <button
-                  onClick={() => router.push("/dashboard")}
-                  className="group p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
-                  title="대시보드로 이동"
-                  aria-label="대시보드로 이동"
-                >
-                  <Book className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-                </button>
-              </nav>
-            </div>
-
-            {/* Main Header Row */}
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-6">
-              {/* Brand Logo */}
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <div className="relative">
-                  <div className="h-12 w-12 flex items-center justify-center bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl shadow-lg">
-                    <Book className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full animate-pulse"></div>
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                  <p className="text-sm text-gray-600">네트워크</p>
-                </div>
-              </div>
-
-              {/* Page Title */}
-              <div className="flex-1 text-center lg:text-center">
-                <div className="inline-flex items-center gap-3 bg-gradient-to-r from-teal-50 to-blue-50 px-6 py-3 rounded-2xl border border-teal-100">
-                  <div className="p-2 bg-gradient-to-r from-teal-400 to-teal-600 rounded-xl">
-                    <Book className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{work.title}</h2>
-                    <p className="text-sm text-gray-600">
-                      {viewMode === 'cover' ? '📖 표지 보기' : `📄 ${contentPages.length}페이지 • ${currentPageIndex + 1}페이지 보는 중`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 flex-shrink-0">
                 <button
                   onClick={handleEdit}
-                  className="group bg-gradient-to-r from-teal-400 to-teal-600 hover:from-teal-500 hover:to-teal-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-teal-500/25"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
                   title="작품 편집하기"
                   aria-label="작품 편집하기"
                 >
-                  <Edit className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
-                  <span className="hidden sm:inline">편집</span>
+                  <Edit className="h-4 w-4" />
+                  <span>편집</span>
                 </button>
                 <button
                   onClick={shareWork}
-                  className="group bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
                   title="작품 공유하기"
                   aria-label="작품 공유하기"
                 >
-                  <Share2 className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+                  <Share2 className="h-4 w-4" />
                   <span className="hidden sm:inline">공유</span>
                 </button>
                 <button
                   onClick={downloadPDF}
-                  className="group bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-purple-500/25"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
                   title="PDF 파일 다운로드"
                   aria-label="PDF 파일 다운로드"
                 >
-                  <Download className="h-4 w-4 group-hover:translate-y-0.5 transition-transform duration-200" />
+                  <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">PDF</span>
                 </button>
                 <button
                   onClick={() => setIsFullscreen(true)}
-                  className="group bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-indigo-500/25"
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
                   title="전체화면으로 보기 (F 키)"
                   aria-label="전체화면으로 보기"
                 >
                   <span className="hidden sm:inline">전체화면</span>
+                  <span className="sm:hidden">전체</span>
                 </button>
               </div>
             </div>
@@ -547,189 +555,55 @@ export default function WorkPreviewPage() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-2 sm:p-4">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 bg-gray-50">
         {viewMode === 'cover' ? (
-          /* Cover View - Enhanced UI/UX */
-          <div className={`relative w-full ${isFullscreen ? 'max-w-4xl' : 'max-w-sm sm:max-w-lg'}`}>
-            {/* Enhanced Card with Gradient Background */}
-            <div className={`relative bg-gradient-to-br from-white via-gray-50/50 to-white rounded-3xl shadow-2xl border border-gray-200/50 hover:shadow-3xl transition-all duration-500 group overflow-hidden ${isFullscreen ? 'p-8' : 'p-6'}`}>
-              {/* Decorative Background Elements */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-100/30 to-blue-100/30 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-700"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-100/30 to-pink-100/30 rounded-full translate-y-12 -translate-x-12 group-hover:scale-110 transition-transform duration-700"></div>
-              
-              {/* Enhanced Header */}
-              <div className={`relative z-10 flex items-center justify-between ${isFullscreen ? 'mb-12' : 'mb-10'}`}>
-                <div className="flex items-center space-x-5 flex-1">
-                  {/* Enhanced Icon with Animation */}
-                  <div className="relative">
-                    <div className="p-4 bg-gradient-to-br from-teal-400 via-teal-500 to-teal-600 rounded-2xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
-                      <Book className="h-7 w-7 text-white" />
-                    </div>
-                    {/* Floating Animation Dots */}
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full animate-bounce"></div>
-                    <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full animate-pulse"></div>
+          /* Cover View - Simplified */
+          <div className={`relative w-full ${isFullscreen ? 'max-w-4xl' : 'max-w-md sm:max-w-lg'}`}>
+            {/* Simplified Card */}
+            <div className={`relative bg-white rounded-2xl shadow-xl border-2 border-gray-300 overflow-hidden ${isFullscreen ? 'p-8' : 'p-6'}`}>
+              {/* Simple Header */}
+              <div className={`relative z-10 flex items-center justify-between mb-6`}>
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
+                    <Book className="h-6 w-6 text-white" />
                   </div>
-                  
-                  {/* Enhanced Text Content */}
                   <div>
-                    <h3 className={`font-bold text-gray-900 group-hover:text-teal-700 transition-colors duration-300 ${isFullscreen ? 'text-3xl' : 'text-2xl'}`}>
-                      📚 작품 미리보기
-                    </h3>
-                    <p className={`text-gray-600 group-hover:text-teal-600 transition-colors duration-300 ${isFullscreen ? 'text-xl' : 'text-lg'}`}>
-                      ✨ 표지 보기 모드
-                    </p>
-                    <div className="flex items-center space-x-2 mt-2">
-                      <div className="w-2 h-2 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm text-gray-500 font-medium">준비 완료</span>
-                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">작품 미리보기</h3>
+                    <p className="text-sm text-gray-600">{contentPages.length}페이지</p>
                   </div>
                 </div>
                 
-                {/* Enhanced Status Badge */}
-                <div className="flex items-center space-x-4 flex-shrink-0">
-                  <div className="relative">
-                    <span className="px-6 py-3 bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 text-white text-lg rounded-2xl font-bold shadow-lg group-hover:shadow-teal-500/25 transition-all duration-300 group-hover:scale-105">
-                      📖 {contentPages.length}페이지
-                    </span>
-                    {/* Status Indicator */}
-                    {contentPages.length > 0 && (
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full animate-pulse shadow-lg">
-                        <div className="absolute inset-1 bg-white rounded-full opacity-60"></div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Quick Action Buttons */}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={openBook}
-                      className="p-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-xl hover:from-blue-500 hover:to-blue-700 transition-all duration-200 hover:scale-105 shadow-lg"
-                      title="책 열기"
-                    >
-                      <Book className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => setIsFullscreen(true)}
-                      className="p-3 bg-gradient-to-r from-purple-400 to-purple-600 text-white rounded-xl hover:from-purple-500 hover:to-purple-700 transition-all duration-200 hover:scale-105 shadow-lg"
-                      title="전체화면"
-                    >
-                      <span className="text-lg">⛶</span>
-                    </button>
-                  </div>
-                </div>
+                <button
+                  onClick={openBook}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  title="책 열기"
+                >
+                  책 열기
+                </button>
               </div>
 
-              {/* Enhanced Book Display */}
-              <div className="relative group/book perspective-1000">
-                {/* Enhanced Multi-layer Shadow */}
-                <div className="absolute -inset-3 bg-gradient-to-r from-gray-200/40 via-gray-300/20 to-gray-200/40 rounded-3xl blur-2xl group-hover/book:blur-3xl transition-all duration-700"></div>
-                <div className="absolute -inset-2 bg-gradient-to-r from-teal-200/30 via-blue-200/20 to-purple-200/30 rounded-2xl blur-lg group-hover/book:blur-xl transition-all duration-500"></div>
-                
-                {/* Enhanced Book Cover */}
-                <div 
-                  className="relative bg-white rounded-2xl shadow-2xl overflow-hidden aspect-[3/4] max-h-[65vh] cursor-pointer group-hover/book:scale-110 group-hover/book:rotate-2 group-hover/book:-translate-y-2 transition-all duration-700 ease-out focus:outline-none focus:ring-4 focus:ring-teal-500/50 transform-gpu border-2 border-white/50"
-              onClick={openBook}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openBook();
-                    }
-                  }}
-                  tabIndex={0}
-                  role="button"
-                  aria-label="책을 열어서 내용을 보기"
-            >
-              <CoverViewer work={work} />
-                  
-                  {/* Enhanced Hover Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover/book:opacity-100 transition-opacity duration-500"></div>
-                  
-                  {/* Enhanced Open Book Icon */}
-                  <div className="absolute top-4 right-4 p-3 bg-white/95 backdrop-blur-md rounded-2xl opacity-0 group-hover/book:opacity-100 transition-all duration-500 transform translate-y-3 group-hover/book:translate-y-0 shadow-xl border border-white/20">
-                    <Book className="h-5 w-5 text-gray-700 group-hover/book:text-teal-600 transition-colors duration-300" />
-            </div>
-            
-                  {/* Reading Progress Indicator */}
-                  <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover/book:opacity-100 transition-all duration-500 transform translate-y-2 group-hover/book:translate-y-0">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-white/20">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700 font-medium">📖 읽기 시작</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-teal-400 rounded-full animate-pulse"></div>
-                          <span className="text-teal-600 font-semibold">클릭하세요</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Decorative Corner Elements */}
-                  <div className="absolute top-0 left-0 w-8 h-8 bg-gradient-to-br from-teal-400/20 to-blue-400/20 rounded-br-2xl opacity-0 group-hover/book:opacity-100 transition-opacity duration-500"></div>
-                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-gradient-to-tl from-purple-400/20 to-pink-400/20 rounded-tl-2xl opacity-0 group-hover/book:opacity-100 transition-opacity duration-500"></div>
-                </div>
+              {/* Simplified Book Cover */}
+              <div 
+                className="relative bg-white rounded-xl shadow-lg overflow-hidden aspect-[3/4] max-h-[70vh] cursor-pointer hover:shadow-xl transition-all duration-200 border-2 border-gray-300"
+                onClick={openBook}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openBook();
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label="책을 열어서 내용을 보기"
+              >
+                <CoverViewer work={work} />
               </div>
 
-            {/* Enhanced Cover Instructions */}
-            <div className={`text-center ${isFullscreen ? 'mt-12' : 'mt-10'}`}>
-              <div className="relative bg-gradient-to-br from-teal-50 via-blue-50/80 to-purple-50 rounded-3xl p-8 border-2 border-teal-200/50 shadow-lg hover:shadow-xl transition-all duration-300 group">
-                {/* Decorative Background */}
-                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-teal-200/30 to-blue-200/30 rounded-full -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500"></div>
-                <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-purple-200/30 to-pink-200/30 rounded-full translate-y-8 -translate-x-8 group-hover:scale-110 transition-transform duration-500"></div>
-                
-                <div className="relative z-10">
-                  {/* Main Instruction */}
-                  <div className="flex items-center justify-center space-x-4 mb-6">
-                    <div className="relative">
-                      <div className="w-4 h-4 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full animate-pulse"></div>
-                      <div className="absolute inset-0 w-4 h-4 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full animate-ping opacity-30"></div>
-                    </div>
-                    <p className={`text-gray-800 font-bold group-hover:text-teal-700 transition-colors duration-300 ${isFullscreen ? 'text-2xl' : 'text-xl'}`}>
-                      📖 표지를 클릭하여 책을 열어보세요
-                    </p>
-                    <div className="relative">
-                      <div className="w-4 h-4 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full animate-pulse"></div>
-                      <div className="absolute inset-0 w-4 h-4 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full animate-ping opacity-30"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Interactive Controls Guide */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    {/* Keyboard Control */}
-                    <div className="group/control flex flex-col items-center space-y-2 p-4 bg-white/60 rounded-2xl hover:bg-white/80 transition-all duration-300 hover:scale-105 border border-white/50">
-                      <div className="flex items-center space-x-2">
-                        <kbd className="px-4 py-2 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-lg text-sm font-mono shadow-inner">→</kbd>
-                        <kbd className="px-4 py-2 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-lg text-sm font-mono shadow-inner">←</kbd>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-700 group-hover/control:text-teal-600 transition-colors duration-200">키보드</span>
-                    </div>
-                    
-                    {/* Mouse Control */}
-                    <div className="group/control flex flex-col items-center space-y-2 p-4 bg-white/60 rounded-2xl hover:bg-white/80 transition-all duration-300 hover:scale-105 border border-white/50">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full animate-pulse"></div>
-                        <span className="text-lg">🖱️</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-700 group-hover/control:text-teal-600 transition-colors duration-200">마우스 클릭</span>
-                    </div>
-                    
-                    {/* Fullscreen Control */}
-                    <div className="group/control flex flex-col items-center space-y-2 p-4 bg-white/60 rounded-2xl hover:bg-white/80 transition-all duration-300 hover:scale-105 border border-white/50">
-                      <div className="flex items-center space-x-2">
-                        <kbd className="px-4 py-2 bg-gradient-to-r from-purple-200 to-purple-300 text-purple-700 rounded-lg text-sm font-mono shadow-inner">F</kbd>
-                        <span className="text-lg">⛶</span>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-700 group-hover/control:text-teal-600 transition-colors duration-200">전체화면</span>
-                    </div>
-                  </div>
-                  
-                  {/* Additional Tips */}
-                  <div className="bg-white/40 rounded-2xl p-4 border border-white/60">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                      <span className="text-lg">💡</span>
-                      <span className="font-medium">팁: 키보드 화살표 키나 F 키를 사용해보세요!</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Simple Instructions */}
+              <div className="mt-6 text-center">
+                <p className="text-base text-gray-700 font-medium">
+                  표지를 클릭하여 책을 열어보세요
+                </p>
               </div>
             </div>
 
@@ -745,79 +619,54 @@ export default function WorkPreviewPage() {
             )}
           </div>
         ) : (
-          /* Pages View - Life Graph Style */
-          <div className="relative max-w-4xl lg:max-w-6xl w-full">
+          /* Pages View - Simplified */
+          <div className="relative w-full max-w-7xl">
             {contentPages.length > 0 ? (
               <>
-                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 group">
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center space-x-4 flex-1">
-                      <div className="p-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                        <Book className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900">페이지 뷰어</h3>
-                        <p className="text-base text-gray-600">내용 보기</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 flex-shrink-0">
-                      <span className="px-4 py-2 bg-gradient-to-r from-blue-400 to-purple-500 text-white text-base rounded-full font-semibold shadow-lg">
-                        {currentPageIndex + 1}/{contentPages.length}
-                      </span>
-                      <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full animate-pulse"></div>
-                    </div>
+                {/* Book Viewer Container */}
+                <div className="relative w-full" style={{ perspective: '2000px' }}>
+                  <div 
+                    className={`relative bg-white rounded-2xl shadow-xl overflow-hidden mx-auto border-2 border-gray-300 transition-all duration-700 ease-in-out ${
+                      isTransitioning && pageTransitionDirection === 'forward' ? 'transform-gpu' : ''
+                    }`}
+                    style={{ 
+                      aspectRatio: pageAspectRatio, // 가로/세로 비율 (A4: 210/297 ≈ 0.707, 신국판: 152/225 ≈ 0.676)
+                      maxHeight: isFullscreen ? '85vh' : '75vh', 
+                      maxWidth: isFullscreen ? '90vw' : '80vw',
+                      width: '100%',
+                      transformStyle: 'preserve-3d'
+                    }}
+                  >
+                    <BookPagesViewer 
+                      currentPage={currentPage} 
+                      nextPage={nextPage}
+                      nextNextPage={contentPages[currentPageIndex + 2]}
+                      isLastPage={currentPageIndex >= contentPages.length - 1}
+                      isTransitioning={isTransitioning}
+                      transitionDirection={pageTransitionDirection}
+                    />
                   </div>
 
-                  <div className="relative group/page">
-                    {/* Book Shadow */}
-                    <div className="absolute -inset-1 bg-gradient-to-r from-gray-200/30 via-gray-300/20 to-gray-200/30 rounded-xl blur-lg"></div>
-                    
-                    <div className="relative bg-white rounded-xl shadow-lg overflow-hidden mx-auto" style={{ 
-                      aspectRatio: '16/10', 
-                      maxHeight: isFullscreen ? '85vh' : '60vh', 
-                      width: '100%' 
-                    }}>
-                  <BookPagesViewer 
-                    currentPage={currentPage} 
-                    nextPage={nextPage}
-                    isLastPage={currentPageIndex >= contentPages.length - 1}
-                  />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Senior Friendly Navigation Controls */}
-                <div className="absolute inset-y-0 left-0 flex items-center">
+                  {/* Left Navigation Button */}
                   <button
                     onClick={goToPreviousPage}
                     disabled={currentPageIndex === 0}
-                    className="group p-4 sm:p-5 bg-white/95 backdrop-blur-md text-gray-700 rounded-full hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed -ml-8 sm:-ml-12 transition-all duration-200 hover:scale-110 disabled:hover:scale-100 focus:outline-none focus:ring-4 focus:ring-teal-500/50 shadow-xl hover:shadow-2xl border-2 border-gray-300"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-white hover:bg-gray-50 text-gray-700 rounded-full shadow-lg hover:shadow-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 border-2 border-gray-200"
                     title="이전 페이지 (← 키)"
                     aria-label={`이전 페이지로 이동 (현재 ${currentPageIndex + 1}페이지)`}
                   >
-                    <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7 group-hover:-translate-x-1 transition-transform duration-200" />
-                    {currentPageIndex > 0 && (
-                      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-medium">
-                        이전 페이지
-                      </div>
-                    )}
+                    <ChevronLeft className="h-6 w-6" />
                   </button>
-                </div>
 
-                <div className="absolute inset-y-0 right-0 flex items-center">
+                  {/* Right Navigation Button */}
                   <button
                     onClick={goToNextPage}
                     disabled={currentPageIndex === contentPages.length - 1}
-                    className="group p-4 sm:p-5 bg-white/95 backdrop-blur-md text-gray-700 rounded-full hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed -mr-8 sm:-mr-12 transition-all duration-200 hover:scale-110 disabled:hover:scale-100 focus:outline-none focus:ring-4 focus:ring-teal-500/50 shadow-xl hover:shadow-2xl border-2 border-gray-300"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-white hover:bg-gray-50 text-gray-700 rounded-full shadow-lg hover:shadow-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 border-2 border-gray-200"
                     title="다음 페이지 (→ 키)"
                     aria-label={`다음 페이지로 이동 (현재 ${currentPageIndex + 1}페이지)`}
                   >
-                    <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7 group-hover:translate-x-1 transition-transform duration-200" />
-                    {currentPageIndex < contentPages.length - 1 && (
-                      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-medium">
-                        다음 페이지
-                      </div>
-                    )}
+                    <ChevronRight className="h-6 w-6" />
                   </button>
                 </div>
               </>
@@ -994,46 +843,50 @@ export default function WorkPreviewPage() {
         )}
             </div>
 
-      {/* Bottom Controls - Life Graph Style */}
+      {/* Bottom Navigation Bar - Simplified */}
       {!isFullscreen && viewMode === 'pages' && contentPages.length > 0 && (
-        <div className="bg-gradient-to-t from-gray-50 via-white to-white/95 border-t border-gray-200/50 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="bg-white border-t-2 border-gray-300 shadow-sm">
+          <div className="mx-auto max-w-[1920px] px-4 sm:px-6 py-4">
+            <div className="flex items-center justify-center gap-6">
+              {/* Previous Button */}
+              <button
+                onClick={goToPreviousPage}
+                disabled={currentPageIndex === 0}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                title="이전 페이지 (← 키)"
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span>이전</span>
+              </button>
 
-            {/* Senior Friendly Progress Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-6 sm:space-y-0 sm:space-x-10">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-teal-400 rounded-full animate-pulse"></div>
-                  <span className="text-base sm:text-lg text-gray-800 font-bold whitespace-nowrap">
-                    페이지 {currentPageIndex + 1}
-              </span>
-                </div>
-                <span className="text-gray-600 text-xl font-bold">/</span>
-                <span className="text-base sm:text-lg text-gray-600 font-bold whitespace-nowrap">
-                  {contentPages.length}
+              {/* Page Info */}
+              <div className="flex items-center gap-4 px-6 py-2 bg-gray-50 rounded-lg border-2 border-gray-200">
+                <span className="text-lg font-bold text-gray-900">
+                  {currentPageIndex + 1} / {contentPages.length}
                 </span>
-              </div>
-              
-              <div className="flex-1 max-w-md sm:max-w-xl w-full">
-                <div className="bg-gray-300/60 rounded-full h-4 sm:h-5 overflow-hidden shadow-inner border border-gray-200">
+                <div className="w-32 h-2 bg-gray-300 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-teal-500 via-teal-400 to-blue-500 h-4 sm:h-5 rounded-full transition-all duration-700 ease-out shadow-sm relative"
+                    className="h-full bg-teal-600 rounded-full transition-all duration-300"
                     style={{
                       width: `${((currentPageIndex + 1) / contentPages.length) * 100}%`,
                     }}
-                  >
-                    {/* Progress bar shine effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                  />
                 </div>
-              </div>
-            </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="text-base sm:text-lg text-gray-800 font-bold">
+                <span className="text-sm font-medium text-gray-600">
                   {Math.round(((currentPageIndex + 1) / contentPages.length) * 100)}%
-                </div>
-                <div className="w-3 h-3 bg-teal-400 rounded-full animate-pulse"></div>
+                </span>
               </div>
+
+              {/* Next Button */}
+              <button
+                onClick={goToNextPage}
+                disabled={currentPageIndex === contentPages.length - 1}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                title="다음 페이지 (→ 키)"
+              >
+                <span>다음</span>
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -1261,26 +1114,85 @@ function CoverViewer({ work }: { work: Work }) {
 
 function BookPagesViewer({ 
   currentPage, 
-  nextPage, 
-  isLastPage 
+  nextPage,
+  nextNextPage,
+  isLastPage,
+  isTransitioning,
+  transitionDirection
 }: { 
   currentPage: Page; 
-  nextPage?: Page; 
+  nextPage?: Page;
+  nextNextPage?: Page;
   isLastPage: boolean;
+  isTransitioning?: boolean;
+  transitionDirection?: 'forward' | 'backward' | null;
 }) {
-  console.log('BookPagesViewer 렌더링:', { currentPage, nextPage, isLastPage });
+  console.log('BookPagesViewer 렌더링:', { currentPage, nextPage, nextNextPage, isLastPage, isTransitioning, transitionDirection });
+  
+  // dFlip 스타일의 책 넘김 효과를 위한 상태
+  // CSS transition을 사용하여 더 부드러운 애니메이션
+  const rightPageRotate = isTransitioning && transitionDirection === 'forward' ? -180 : 0;
+  const leftPageTranslate = isTransitioning && transitionDirection === 'forward' ? -100 : 0;
   
   return (
-    <div className="w-full h-full flex bg-white">
+    <div className="w-full h-full flex bg-white relative overflow-hidden" style={{ 
+      transformStyle: 'preserve-3d',
+      perspective: '2000px'
+    }}>
       {/* Left Page */}
-      <div className="flex-1 border-r border-gray-200">
+      <div 
+        className="flex-1 border-r border-gray-200 relative transition-transform duration-700 ease-in-out"
+        style={{
+          transform: `translateX(${leftPageTranslate}%)`,
+          transformStyle: 'preserve-3d',
+          zIndex: isTransitioning && transitionDirection === 'forward' ? 1 : 2
+        }}
+      >
         <PageViewer page={currentPage} />
       </div>
 
-      {/* Right Page */}
-      <div className="flex-1">
+      {/* Right Page - dFlip 스타일 3D 회전 */}
+      <div 
+        className="flex-1 relative transition-transform duration-700 ease-in-out"
+        style={{
+          transform: `rotateY(${rightPageRotate}deg)`,
+          transformOrigin: 'left center',
+          transformStyle: 'preserve-3d',
+          zIndex: isTransitioning && transitionDirection === 'forward' ? 3 : 1
+        }}
+      >
         {nextPage ? (
-          <PageViewer page={nextPage} />
+          <div className="relative w-full h-full" style={{ transformStyle: 'preserve-3d' }}>
+            {/* Front of page */}
+            <div 
+              className="absolute inset-0"
+              style={{
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateY(0deg)'
+              }}
+            >
+              <PageViewer page={nextPage} />
+            </div>
+            {/* Back of page (flipped) */}
+            <div 
+              className="absolute inset-0 bg-white"
+              style={{
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)'
+              }}
+            >
+              {/* 뒤 페이지 내용 (다음 페이지) */}
+              {nextNextPage ? (
+                <PageViewer page={nextNextPage} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                  <p className="text-gray-400">끝</p>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
             <div className="text-center text-gray-500">
@@ -1294,7 +1206,26 @@ function BookPagesViewer({
             </div>
           </div>
         )}
+        
+        {/* Page Fold Shadow - dFlip 스타일 */}
+        {isTransitioning && transitionDirection === 'forward' && (
+          <div 
+            className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+            style={{
+              background: 'linear-gradient(to left, transparent 0%, rgba(0,0,0,0.05) 48%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.05) 52%, transparent 100%)',
+              opacity: Math.abs(rightPageRotate) > 0 ? 0.8 : 0
+            }}
+          />
+        )}
       </div>
+      
+      {/* Global CSS for backface visibility */}
+      <style jsx global>{`
+        .backface-hidden {
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }
+      `}</style>
     </div>
   );
 }
