@@ -3,6 +3,7 @@
 
 import { Page } from '@/lib/types'
 import { Image as ImageIcon, Plus, Type } from 'lucide-react'
+import Image from 'next/image'
 
 
 export default function PagePreview({ page }: { page: Page }) {
@@ -14,15 +15,19 @@ return (
 <div className="w-full h-full flex flex-col relative overflow-hidden">
 {/* Image Content */}
 {page.content.image && (
-<div className={`${page.type === 'mixed' ? 'flex-1' : 'w-full h-full'} flex items-center justify-center bg-gray-100`}>
-<img
+<div className={`${page.type === 'mixed' ? 'flex-1' : 'w-full h-full'} flex items-center justify-center bg-gray-100 relative`}>
+<div className="relative w-full h-full max-w-full max-h-full">
+<Image
 src={page.content.image}
 alt="Page content"
-className="max-w-full max-h-full object-contain"
+fill
+className="object-contain"
 style={{
 transform: `rotate(${imageStyle?.rotation || 0}deg) scaleX(${imageStyle?.flipH ? -1 : 1}) scaleY(${imageStyle?.flipV ? -1 : 1})`
 }}
+sizes="100%"
 />
+</div>
 </div>
 )}
 

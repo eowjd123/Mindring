@@ -2,8 +2,8 @@
 
 "use client";
 
-import { ChevronLeft, ChevronRight, Info, Sparkles } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import { ChevronRight, Info, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // A4(210x297mm), 신국판(152x225mm)
@@ -56,8 +56,6 @@ export default function NewWorkSetupPage() {
   useEffect(() => {
     localStorage.setItem("xui.newwork.opts", JSON.stringify(opts));
   }, [opts]);
-
-  const aspect = useMemo(() => SIZE_PRESETS[opts.size].aspect, [opts.size]);
 
   const handleContinue = () => {
     // API 스키마에 맞는 파라미터로 에디터 페이지로 이동

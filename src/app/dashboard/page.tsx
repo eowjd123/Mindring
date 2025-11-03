@@ -9,7 +9,6 @@ import {
   Clock,
   Heart,
   PlusCircle,
-  Sparkles,
   Star,
   TrendingUp,
   User

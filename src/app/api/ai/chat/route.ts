@@ -146,7 +146,7 @@
 
 // app/api/ai/chat/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { getSessionUser } from '@/lib/session';
 
@@ -157,7 +157,7 @@ function json<T>(status: number, body: T) {
   return NextResponse.json(body, { status });
 }
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   try {
     const user = await getSessionUser();
     if (!user) return json(401, { error: 'Authentication required' });
@@ -166,7 +166,7 @@ export async function POST(_req: NextRequest) {
       error: 'AI chat API is temporarily disabled',
       detail: '이 엔드포인트는 현재 비활성화되어 있습니다.',
     });
-  } catch (_err: unknown) {
+  } catch {
     return json(500, { error: 'Unexpected error' });
   }
 }
@@ -185,7 +185,7 @@ export async function GET() {
         voiceRecording: true,
       },
     });
-  } catch (_err: unknown) {
+  } catch {
     return json(500, { error: 'Failed to check status' });
   }
 }

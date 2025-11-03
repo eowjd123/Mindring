@@ -10,23 +10,17 @@ import {
   Download,
   FileText,
   Library,
-  Maximize2,
-  Minimize2,
-  Pause,
-  Play,
   Plus,
   Search,
   Share2,
-  SkipBack,
-  SkipForward,
   Sparkles,
   X,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 /* =====================
  * 타입 정의
@@ -235,7 +229,6 @@ const getContentPages = (book: CompletedWork): CompletedWork["pages"] => {
  * 메인 컴포넌트
  * ===================== */
 export default function BooksPage() {
-  const router = useRouter();
   const [books, setBooks] = useState<CompletedWork[]>([]);
   const [selectedBook, setSelectedBook] = useState<CompletedWork | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -478,15 +471,6 @@ export default function BooksPage() {
     }
   }, [currentPage]);
 
-  const goToPage = useCallback(
-    (index: number) => {
-      if (selectedBook && index >= 0 && index < selectedBook.pages.length) {
-        setCurrentPage(index);
-      }
-    },
-    [selectedBook]
-  );
-
   const deleteBook = async (bookId: string) => {
     try {
       const res = await fetch(`/api/works/${bookId}`, { method: "DELETE" });
@@ -529,17 +513,13 @@ export default function BooksPage() {
       <ImprovedBookViewer
         book={selectedBook}
         currentPage={currentPage}
-        isPlaying={isPlaying}
         isFullscreen={isFullscreen}
         debugMode={debugMode}
         onNextPage={goToNextPage}
         onPrevPage={goToPreviousPage}
-        onTogglePlay={() => setIsPlaying(!isPlaying)}
         onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-        onToggleDebug={() => setDebugMode(!debugMode)}
         onDownload={downloadBook}
         onShare={shareBook}
-        onPageChange={setCurrentPage}
         onBack={() => {
           setSelectedBook(null);
           setCurrentPage(0);
@@ -689,9 +669,11 @@ function ShelfSection({
   title: string;
   subtitle: string;
   books: CompletedWork[];
-  onSelect: (b: CompletedWork) => void;
+  // eslint-disable-next-line no-unused-vars
+  onSelect: (_: CompletedWork) => void;
   variant: "current" | "next" | "finished";
-  onDeleteRequest: (b: CompletedWork) => void;
+  // eslint-disable-next-line no-unused-vars
+  onDeleteRequest: (_: CompletedWork) => void;
 }) {
   const solidColors = {
     current: "bg-teal-600",
@@ -759,8 +741,10 @@ function BookshelfSection({
   title: string;
   subtitle: string;
   books: CompletedWork[];
-  onSelect: (b: CompletedWork) => void;
-  onDeleteRequest: (b: CompletedWork) => void;
+  // eslint-disable-next-line no-unused-vars
+  onSelect: (book: CompletedWork) => void;
+  // eslint-disable-next-line no-unused-vars
+  onDeleteRequest: (book: CompletedWork) => void;
 }) {
   const [scrollPosition, setScrollPosition] = useState(0);
   const shelfRef = React.useRef<HTMLDivElement>(null);
@@ -956,10 +940,12 @@ function BookCover({
     >
       {cover ? (
         <div className="relative w-full h-full">
-          <img
+          <Image
             src={cover}
             alt={book.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            sizes="100%"
             draggable={false}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1013,34 +999,28 @@ function BookCover({
 interface ImprovedBookViewerProps {
   book: CompletedWork;
   currentPage: number;
-  isPlaying: boolean;
   isFullscreen: boolean;
   debugMode: boolean;
   onNextPage: () => void;
   onPrevPage: () => void;
-  onTogglePlay: () => void;
   onToggleFullscreen: () => void;
-  onToggleDebug: () => void;
-  onDownload: (bookId: string, format: "pdf" | "epub" | "images") => void;
-  onShare: (book: CompletedWork, method: "kakao" | "email" | "link") => void;
-  onPageChange: (page: number) => void;
+  // eslint-disable-next-line no-unused-vars
+  onDownload: (_: string, __: "pdf" | "epub" | "images") => void;
+  // eslint-disable-next-line no-unused-vars
+  onShare: (_: CompletedWork, __: "kakao" | "email" | "link") => void;
   onBack: () => void;
 }
 
 function ImprovedBookViewer({
   book,
   currentPage,
-  isPlaying,
   isFullscreen,
   debugMode,
   onNextPage,
   onPrevPage,
-  onTogglePlay,
   onToggleFullscreen,
-  onToggleDebug,
   onDownload,
   onShare,
-  onPageChange,
   onBack,
 }: ImprovedBookViewerProps) {
   // ✨ 표지 제외한 내지 페이지
@@ -1393,15 +1373,15 @@ function PageViewer({
                 </div>
               )}
               {element.type === "image" && element.content && (
-                <img
-                  src={element.content}
-                  alt="Page element"
-                  className="w-full h-full object-cover rounded"
-                  onError={(e) => {
-                    console.error("이미지 로드 실패:", element.content);
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
-                />
+                <div className="relative w-full h-full rounded overflow-hidden">
+                  <Image
+                    src={element.content}
+                    alt="Page element"
+                    fill
+                    className="object-cover rounded"
+                    sizes="100%"
+                  />
+                </div>
               )}
             </div>
           ))}
@@ -1415,23 +1395,22 @@ function PageViewer({
                 page.type === "MIXED" ? "flex-1" : "w-full h-full"
               } flex items-center justify-center p-4`}
             >
-              <img
-                src={page.content.image}
-                alt="Page content"
-                className="max-w-full max-h-full object-contain"
-                style={{
-                  transform: `
-                    rotate(${imageStyle?.rotation || 0}deg)
-                    scaleX(${imageStyle?.flipH ? -1 : 1})
-                    scaleY(${imageStyle?.flipV ? -1 : 1})
-                  `,
-                }}
-                loading="lazy"
-                onError={(e) => {
-                  console.error("페이지 이미지 로드 실패:", page.content.image);
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
+              <div className="relative w-full h-full max-w-full max-h-full">
+                <Image
+                  src={page.content.image}
+                  alt="Page content"
+                  fill
+                  className="object-contain"
+                  sizes="100%"
+                  style={{
+                    transform: `
+                      rotate(${imageStyle?.rotation || 0}deg)
+                      scaleX(${imageStyle?.flipH ? -1 : 1})
+                      scaleY(${imageStyle?.flipV ? -1 : 1})
+                    `,
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -1487,33 +1466,3 @@ function PageViewer({
   );
 }
 
-/* =====================
- * PageThumbnail 컴포넌트
- * ===================== */
-function PageThumbnail({ page }: { page: CompletedWork["pages"][0] }) {
-  return (
-    <div className="w-full h-full bg-white overflow-hidden">
-      {page.content.image ? (
-        <img
-          src={page.content.image}
-          alt="Thumbnail"
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      ) : page.content.text ? (
-        <div className="w-full h-full p-1 text-[6px] text-black overflow-hidden leading-tight">
-          {page.content.text.substring(0, 50)}
-          {page.content.text.length > 50 ? "..." : ""}
-        </div>
-      ) : page.content.elements && page.content.elements.length > 0 ? (
-        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-          <BookOpen className="w-3 h-3 text-gray-400" />
-        </div>
-      ) : (
-        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-          <div className="text-[8px] text-gray-400">빈 페이지</div>
-        </div>
-      )}
-    </div>
-  );
-}

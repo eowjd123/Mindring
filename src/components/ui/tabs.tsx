@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils"
 
 interface TabsContextValue {
   value: string
-  onValueChange: (value: string) => void
+  // eslint-disable-next-line no-unused-vars
+  onValueChange: (_value: string) => void
   orientation?: "horizontal" | "vertical"
 }
 
@@ -24,7 +25,8 @@ const useTabsContext = () => {
 
 interface TabsProps {
   value?: string
-  onValueChange?: (value: string) => void
+  // eslint-disable-next-line no-unused-vars
+  onValueChange?: (_value: string) => void
   defaultValue?: string
   orientation?: "horizontal" | "vertical"
   children: React.ReactNode

@@ -18,6 +18,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 import Link from "next/link";
+import Image from "next/image";
 
 /* ========= Types ========= */
 type WorkStatus = "DRAFT" | "COMPLETED" | "PUBLISHED";
@@ -610,11 +611,15 @@ function WorkCard({ work, onDelete }: WorkCardProps) {
         <div className="absolute inset-0 bg-gradient-to-br from-teal-100/20 via-transparent to-blue-100/20"></div>
         
         {work.coverImage ? (
-          <img
-            src={work.coverImage}
-            alt={work.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-          />
+          <div className="relative w-full h-full">
+            <Image
+              src={work.coverImage}
+              alt={work.title}
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-500"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div className="text-center group-hover:scale-110 transition-transform duration-300">

@@ -7,8 +7,6 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
-  CheckCircle,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -17,14 +15,11 @@ import {
   Image as ImageIcon,
   Italic,
   Layout,
-  Link,
   Menu,
   Plus,
   Redo,
-  Save,
   Strikethrough,
   Trash2,
-  Type,
   Underline,
   Undo,
   Upload,
@@ -32,6 +27,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 
 // 링크가 포함된 텍스트를 렌더링하는 함수
 const renderTextWithLinks = (content: string, links: { start: number; end: number; url: string; text: string }[] = []) => {
@@ -226,12 +222,6 @@ function normalizePageType(type: string): PageType {
 }
 
 // Helper functions for cover generation
-async function _generateCoverFromTemplate(_page: Page): Promise<string> {
-  // 실제 구현에서는 HTML Canvas를 사용하여 템플릿을 이미지로 렌더링
-  // 여기서는 placeholder 구현
-  return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
-}
-
 async function generateDefaultCover(title: string): Promise<string> {
   // Canvas를 사용해서 기본 표지 이미지 생성
   return new Promise((resolve) => {
@@ -831,14 +821,17 @@ const PAGE_TEMPLATES: Template[] = [
 
 interface EditablePageViewProps {
   page: Page;
+  // eslint-disable-next-line no-unused-vars
   onUpdateElement: (_elementId: string, _content: string) => void;
-  onUpdateElementImage: (_elementId: string, _imageUrl: string) => void;
+  // eslint-disable-next-line no-unused-vars
+  onUpdateElementImage?: (_elementId: string, _imageUrl: string) => void;
+  // eslint-disable-next-line no-unused-vars
   onSelectElement: (_elementId: string) => void;
   selectedElementId: string | null;
   fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
-function EditablePageView({ page, onUpdateElement: _onUpdateElement, onUpdateElementImage: _onUpdateElementImage, onSelectElement, selectedElementId, fileInputRef }: EditablePageViewProps) {
+function EditablePageView({ page, onUpdateElement: _onUpdateElement, onSelectElement, selectedElementId, fileInputRef }: EditablePageViewProps) {
   if (!page.content.elements || page.content.elements.length === 0) {
     return <PagePreview page={page} />;
   }
@@ -935,7 +928,13 @@ function EditablePageView({ page, onUpdateElement: _onUpdateElement, onUpdateEle
 
           {element.type === "image" && (
             <div className="w-full h-full relative">
-              <img src={element.content} alt="Page element" className="w-full h-full object-contain rounded" />
+              <Image
+                src={element.content}
+                alt="Page element"
+                fill
+                className="object-contain rounded"
+                sizes="100%"
+              />
               <button
                 type="button"
                 className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center"
@@ -994,7 +993,15 @@ function TemplatePreview({ template }: TemplatePreviewProps) {
             </div>
           )}
           {element.type === "image" && (
-            <img src={element.content} alt="Template element" className="w-full h-full object-contain" />
+            <div className="relative w-full h-full">
+              <Image
+                src={element.content}
+                alt="Template element"
+                fill
+                className="object-contain"
+                sizes="100%"
+              />
+            </div>
           )}
         </div>
       ))}
@@ -1048,7 +1055,15 @@ function PagePreview({ page }: PagePreviewProps) {
               </div>
             )}
             {element.type === "image" && (
-              <img src={element.content} alt="Page element" className="w-full h-full object-contain rounded" />
+              <div className="relative w-full h-full">
+                <Image 
+                  src={element.content} 
+                  alt="Page element" 
+                  fill
+                  className="object-contain rounded"
+                  sizes="100%"
+                />
+              </div>
             )}
           </div>
         ))}
@@ -1063,14 +1078,18 @@ function PagePreview({ page }: PagePreviewProps) {
     <div className="w-full h-full flex flex-col relative overflow-hidden">
       {page.content.image && (
         <div className={`${page.type === "mixed" ? "flex-1" : "w-full h-full"} flex items-center justify-center bg-gray-100`}>
-          <img
-            src={page.content.image}
-            alt="Page content"
-            className="max-w-full max-h-full object-contain"
-            style={{
-              transform: `rotate(${imageStyle?.rotation ?? 0}deg) scaleX(${imageStyle?.flipH ? -1 : 1}) scaleY(${imageStyle?.flipV ? -1 : 1})`,
-            }}
-          />
+          <div className="relative w-full h-full max-w-full max-h-full">
+            <Image
+              src={page.content.image}
+              alt="Page content"
+              fill
+              className="object-contain"
+              sizes="100%"
+              style={{
+                transform: `rotate(${imageStyle?.rotation ?? 0}deg) scaleX(${imageStyle?.flipH ? -1 : 1}) scaleY(${imageStyle?.flipV ? -1 : 1})`,
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -1128,57 +1147,15 @@ export default function CreateWorkPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [showLinkDialog, setShowLinkDialog] = useState(false);
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkText, setLinkText] = useState("");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [showFullPage, setShowFullPage] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedPage = useMemo(() => work.pages.find((p) => p.id === selectedPageId) ?? null, [work.pages, selectedPageId]);
-
-  // 링크 추가 함수
-  const addLink = () => {
-    if (!linkUrl.trim() || !linkText.trim() || !selectedPage) return;
-    
-    const selectedElement = selectedPage.content.elements?.find(el => el.id === selectedElementId);
-    if (selectedElement && selectedElement.type === 'text') {
-      const currentContent = selectedElement.content || "";
-      const linkStart = currentContent.length;
-      const linkEnd = linkStart + linkText.length;
-      
-      const newContent = currentContent + linkText;
-      const newLinks = [
-        ...(selectedElement.links || []),
-        { start: linkStart, end: linkEnd, url: linkUrl, text: linkText }
-      ];
-      
-      const updatedElements = selectedPage.content.elements?.map(el => 
-        el.id === selectedElementId 
-          ? { ...el, content: newContent, links: newLinks }
-          : el
-      );
-      
-      setWork((prev) => ({
-        ...prev,
-        pages: prev.pages.map((page) =>
-          page.id === selectedPage.id
-            ? { ...page, content: { ...page.content, elements: updatedElements || [] } }
-            : page
-        ),
-        updatedAt: new Date(),
-      }));
-      
-      setLinkUrl("");
-      setLinkText("");
-      setShowLinkDialog(false);
-    }
-  };
 
   /* ---------- Load Work Data ---------- */
   useEffect(() => {
@@ -1384,7 +1361,7 @@ export default function CreateWorkPage() {
     if (selectedElementId !== null) {
       setSelectedElementId(null);
     }
-  }, [selectedPageId]);
+  }, [selectedPageId, selectedElementId]);
 
   /* ---------- Save and Preview ---------- */
   const saveWork = async (): Promise<string | null> => {
@@ -1538,7 +1515,7 @@ const completeWork = async (): Promise<string | null> => {
     if (index !== -1 && index !== currentPageIndex) {
       setCurrentPageIndex(index);
     }
-  }, [selectedPageId, work.pages]);
+  }, [selectedPageId, work.pages, currentPageIndex]);
 
   // Update selectedPageId from index only on initial/empty state to avoid loops
   useEffect(() => {
@@ -1741,7 +1718,6 @@ const completeWork = async (): Promise<string | null> => {
                       <EditablePageView
                         page={leftPage}
                         onUpdateElement={(elementId, content) => updateElementContent(leftPage.id, elementId, content)}
-                        onUpdateElementImage={(elementId, imageUrl) => updateElementImage(leftPage.id, elementId, imageUrl)}
                         onSelectElement={setSelectedElementId}
                         selectedElementId={selectedElementId}
                         fileInputRef={fileInputRef}
@@ -1764,7 +1740,6 @@ const completeWork = async (): Promise<string | null> => {
                         <EditablePageView
                           page={rightPage}
                           onUpdateElement={(elementId, content) => updateElementContent(rightPage.id, elementId, content)}
-                          onUpdateElementImage={(elementId, imageUrl) => updateElementImage(rightPage.id, elementId, imageUrl)}
                           onSelectElement={setSelectedElementId}
                           selectedElementId={selectedElementId}
                           fileInputRef={fileInputRef}
@@ -1864,7 +1839,7 @@ const completeWork = async (): Promise<string | null> => {
                         </div>
 
                         <div className="pt-1">
-                          <button onClick={() => setShowLinkDialog(true)} className="w-full py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300" title="링크 추가">링크 추가</button>
+                          <button className="w-full py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300" title="링크 추가" disabled>링크 추가</button>
                         </div>
                       </div>
                     </div>

@@ -59,7 +59,7 @@ const toScoreKey = (n: number): 1 | 2 | 3 | 4 | 5 => {
 
 // -------------------- GET: 조회 --------------------
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const user = await getSessionUser();
     if (!user) {

@@ -5,6 +5,7 @@
 import { Book, ChevronLeft, ChevronRight, Download, Edit, FileText, Share2, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 /* =========================
    Types
@@ -1017,16 +1018,18 @@ function CoverViewer({ work }: { work: Work }) {
                     </div>
                   )}
                   {element.type === 'image' && element.content && (
-                    <img
-                      src={element.content}
-                      alt="Cover element"
-                      className="w-full h-full object-cover rounded"
-                      onError={(e) => {
-                        console.error('표지 이미지 로드 실패:', element.content);
-                        // 이미지 로드 실패 시 placeholder로 대체
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <div className="relative w-full h-full rounded overflow-hidden">
+                      <Image
+                        src={element.content}
+                        alt="Cover element"
+                        fill
+                        className="object-cover rounded"
+                        sizes="100%"
+                        onError={() => {
+                          console.error('표지 이미지 로드 실패:', element.content);
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               );
@@ -1041,11 +1044,13 @@ function CoverViewer({ work }: { work: Work }) {
   if (work.coverImage) {
     return (
       <div className="w-full h-full relative">
-        <img
+        <Image
           src={work.coverImage}
           alt="Cover"
-          className="w-full h-full object-cover"
-          loading="lazy"
+          fill
+          className="object-cover"
+          sizes="100%"
+          priority={false}
         />
         <div className="absolute inset-0 bg-black/20 flex flex-col justify-end p-6">
           <h1 className="text-white text-2xl font-bold mb-2 drop-shadow-lg">
@@ -1282,15 +1287,18 @@ function PageViewer({ page }: { page: Page }) {
                 </div>
               )}
               {element.type === 'image' && element.content && (
-                <img
-                  src={element.content}
-                  alt="Page element"
-                  className="w-full h-full object-cover rounded"
-                  onError={(e) => {
-                    console.error('이미지 로드 실패:', element.content);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
+                <div className="relative w-full h-full rounded overflow-hidden">
+                  <Image
+                    src={element.content}
+                    alt="Page element"
+                    fill
+                    className="object-cover rounded"
+                    sizes="100%"
+                    onError={() => {
+                      console.error('이미지 로드 실패:', element.content);
+                    }}
+                  />
+                </div>
               )}
             </div>
           ))}
@@ -1304,23 +1312,25 @@ function PageViewer({ page }: { page: Page }) {
                 page.type === "mixed" ? "flex-1" : "w-full h-full"
               } flex items-center justify-center p-4`}
             >
-              <img
-                src={page.content.image}
-                alt="Page content"
-                className="max-w-full max-h-full object-contain"
-                style={{
-                  transform: `
-                    rotate(${imageStyle?.rotation || 0}deg)
-                    scaleX(${imageStyle?.flipH ? -1 : 1})
-                    scaleY(${imageStyle?.flipV ? -1 : 1})
-                  `,
-                }}
-                loading="lazy"
-                onError={(e) => {
-                  console.error('페이지 이미지 로드 실패:', page.content.image);
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
+              <div className="relative w-full h-full max-w-full max-h-full">
+                <Image
+                  src={page.content.image}
+                  alt="Page content"
+                  fill
+                  className="object-contain"
+                  sizes="100%"
+                  style={{
+                    transform: `
+                      rotate(${imageStyle?.rotation || 0}deg)
+                      scaleX(${imageStyle?.flipH ? -1 : 1})
+                      scaleY(${imageStyle?.flipV ? -1 : 1})
+                    `,
+                  }}
+                  onError={() => {
+                    console.error('페이지 이미지 로드 실패:', page.content.image);
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -1370,38 +1380,6 @@ function PageViewer({ page }: { page: Page }) {
             </div>
           )}
         </>
-      )}
-    </div>
-  );
-}
-
-/* =========================
-   Page Thumbnail Component
-   ========================= */
-
-function _PageThumbnail({ page }: { page: Page }) {
-  return (
-    <div className="w-full h-full bg-white overflow-hidden">
-      {page.content.image ? (
-        <img
-          src={page.content.image}
-          alt="Thumbnail"
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      ) : page.content.text ? (
-        <div className="w-full h-full p-1 text-[6px] text-black overflow-hidden leading-tight">
-          {page.content.text.substring(0, 50)}
-          {page.content.text.length > 50 ? "..." : ""}
-        </div>
-      ) : page.content.elements && page.content.elements.length > 0 ? (
-        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-          <FileText className="w-3 h-3 text-gray-400" />
-        </div>
-      ) : (
-        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-          <div className="text-[8px] text-gray-400">빈 페이지</div>
-        </div>
       )}
     </div>
   );

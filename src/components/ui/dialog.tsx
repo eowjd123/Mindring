@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils"
 
 interface DialogProps {
   open?: boolean
-  onOpenChange?: (open: boolean) => void
+  // eslint-disable-next-line no-unused-vars
+  onOpenChange?: (_open: boolean) => void
   children: React.ReactNode
 }
 
@@ -25,7 +26,8 @@ interface DialogTriggerProps {
 
 const DialogContext = React.createContext<{
   open: boolean
-  onOpenChange: (open: boolean) => void
+  // eslint-disable-next-line no-unused-vars
+  onOpenChange: (_open: boolean) => void
 }>({
   open: false,
   onOpenChange: () => {},

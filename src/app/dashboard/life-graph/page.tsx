@@ -6,13 +6,9 @@ import {
   Check,
   Edit2,
   Heart,
-  Home,
-  LogOut,
-  Moon,
   Plus,
   Sparkles,
   Star,
-  Sun,
   Trash2,
   TrendingUp,
   User,
@@ -93,11 +89,12 @@ function LifeGraphPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode] = useState(false);
 
   // 초기 데이터 로드
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -202,20 +199,6 @@ function LifeGraphPage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
 
   const saveUserInfo = async () => {
     if (!userInfo.name.trim()) {
@@ -366,51 +349,6 @@ function LifeGraphPage() {
     }
   };
 
-  const _exportData = async (format: "json") => {
-    try {
-      const response = await fetch(`/api/life-graph/export?format=${format}`, {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `life-graph.${format}`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        throw new Error("Export failed");
-      }
-    } catch (error) {
-      console.error("Export failed:", error);
-      showAlert({ type: 'error', title: "내보내기 오류", message: "내보내기 중 오류가 발생했습니다." });
-    }
-  };
-
-  const _importFromJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      if (data.userInfo && data.events) {
-        setUserInfo(data.userInfo as UserInfo);
-        setEvents(data.events as LifeEvent[]);
-        showAlert({ type: 'success', title: "불러오기 완료", message: "JSON 파일을 성공적으로 불러왔습니다." });
-      } else {
-        throw new Error("Invalid JSON format");
-      }
-    } catch (error) {
-      console.error("Import failed:", error);
-      showAlert({ type: 'error', title: "파일 오류", message: "JSON 파일 형식이 올바르지 않습니다." });
-    }
-
-    event.target.value = "";
-  };
 
   if (isLoading) {
     return (
@@ -444,10 +382,6 @@ function LifeGraphPage() {
       </div>
     );
   }
-
-  const _themeClasses = isDarkMode
-    ? "bg-gray-900 text-white"
-    : "bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-900";
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -625,15 +559,12 @@ function LifeGraphPage() {
                   setEditingEvent(null);
                 }}
                 isDisabled={isSaving}
-                _isDarkMode={isDarkMode}
                 _showAlert={showAlert}
               />
             ) : (
               <LifeGraphChart
-                _userInfo={userInfo}
                 events={events}
                 onAddEvent={() => setShowForm(true)}
-                _isDarkMode={isDarkMode}
               />
             )}
           </div>
@@ -824,13 +755,15 @@ function LifeGraphPage() {
 }
 
 // Modern Event Form Component
+// Note: Parameter names in function types are required by TypeScript but unused in type definitions
 interface EventFormProps {
   event: LifeEvent | null;
-  onSave: (event: Omit<LifeEvent, "id">) => void;
+  // eslint-disable-next-line no-unused-vars
+  onSave: (_event: Omit<LifeEvent, "id">) => void;
   onCancel: () => void;
   isDisabled?: boolean;
-  _isDarkMode?: boolean;
-  _showAlert: (options: { type: 'error' | 'success' | 'warning' | 'info'; title: string; message: string; confirmText?: string }) => void;
+  // eslint-disable-next-line no-unused-vars
+  _showAlert: (_options: { type: 'error' | 'success' | 'warning' | 'info'; title: string; message: string; confirmText?: string }) => void;
 }
 
 function EventForm({
@@ -838,7 +771,6 @@ function EventForm({
   onSave,
   onCancel,
   isDisabled = false,
-  _isDarkMode = false,
   _showAlert,
 }: EventFormProps) {
   const [formData, setFormData] = useState<Omit<LifeEvent, "id">>({
@@ -1150,17 +1082,13 @@ function EventForm({
 
 // Modern Life Graph Chart Component
 interface LifeGraphChartProps {
-  _userInfo: UserInfo;
   events: LifeEvent[];
   onAddEvent: () => void;
-  _isDarkMode?: boolean;
 }
 
 function LifeGraphChart({
-  _userInfo,
   events,
   onAddEvent,
-  _isDarkMode = false,
 }: LifeGraphChartProps) {
   const generateGraphPoints = () => {
     if (events.length === 0) return [];

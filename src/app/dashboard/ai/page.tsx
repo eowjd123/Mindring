@@ -55,7 +55,6 @@ export default function AIChatPage() {
         timestamp: nowISO(),
       },
     ]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

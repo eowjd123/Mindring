@@ -3,12 +3,12 @@
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
-import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface AlertDialogProps {
   open?: boolean
-  onOpenChange?: (open: boolean) => void
+  // eslint-disable-next-line no-unused-vars
+  onOpenChange?: (_open: boolean) => void
   children: React.ReactNode
 }
 

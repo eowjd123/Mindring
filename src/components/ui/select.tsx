@@ -10,10 +10,13 @@ import { cn } from "@/lib/utils"
 
 interface SelectContextValue {
   value: string
-  onValueChange: (value: string) => void
+  // eslint-disable-next-line no-unused-vars
+  onValueChange: (_value: string) => void
   open: boolean
-  onOpenChange: (open: boolean) => void
+  // eslint-disable-next-line no-unused-vars
+  onOpenChange: (_open: boolean) => void
   placeholder?: string
+  contentId: string
 }
 
 const SelectContext = React.createContext<SelectContextValue | undefined>(undefined)
@@ -28,7 +31,8 @@ const useSelectContext = () => {
 
 interface SelectProps {
   value?: string
-  onValueChange?: (value: string) => void
+  // eslint-disable-next-line no-unused-vars
+  onValueChange?: (_value: string) => void
   defaultValue?: string
   children: React.ReactNode
   disabled?: boolean
@@ -43,6 +47,7 @@ const Select: React.FC<SelectProps> = ({
 }) => {
   const [internalValue, setInternalValue] = React.useState(defaultValue)
   const [open, setOpen] = React.useState(false)
+  const contentId = React.useId()
 
   const value = controlledValue !== undefined ? controlledValue : internalValue
 
@@ -79,7 +84,7 @@ const Select: React.FC<SelectProps> = ({
 
   // 외부 클릭으로 닫기
   React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (open) {
         setOpen(false)
       }
@@ -99,6 +104,7 @@ const Select: React.FC<SelectProps> = ({
     onValueChange: handleValueChange,
     open,
     onOpenChange: handleOpenChange,
+    contentId,
   }
 
   return (
@@ -114,7 +120,7 @@ const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, children, ...props }, ref) => {
-  const { open, onOpenChange } = useSelectContext()
+  const { open, onOpenChange, contentId } = useSelectContext()
 
   return (
     <button
@@ -122,6 +128,7 @@ const SelectTrigger = React.forwardRef<
       type="button"
       role="combobox"
       aria-expanded={open}
+      aria-controls={contentId}
       aria-haspopup="listbox"
       className={cn(
         "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
@@ -171,13 +178,14 @@ const SelectContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, children, ...props }, ref) => {
-  const { open } = useSelectContext()
+  const { open, contentId } = useSelectContext()
 
   if (!open) return null
 
   return (
     <div
       ref={ref}
+      id={contentId}
       className={cn(
         "absolute top-full left-0 z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border border-gray-200 bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-in fade-in-0 zoom-in-95",
         className

@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revokeSession } from '@/lib/session';
 
 // POST 요청 처리 (기존)
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     await revokeSession();
     

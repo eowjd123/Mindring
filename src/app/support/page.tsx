@@ -13,9 +13,6 @@ import {
   HelpCircle,
   FileText,
   Users,
-  Clock,
-  CheckCircle,
-  AlertCircle,
   Info,
 } from 'lucide-react';
 

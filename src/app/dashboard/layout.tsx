@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ReactNode } from "react";
 import { requireAuth } from "@/lib/session";
 
@@ -71,18 +72,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-3 py-4 overflow-x-auto">
             {/* Logo */}
             <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-b to-pink-500 rounded-lg flex items-center justify-center">
-                <img
+              <div className="w-10 h-10 bg-gradient-to-b to-pink-500 rounded-lg flex items-center justify-center relative">
+                <Image
                   src="/img/OBJECTS.png"
                   alt="Objects Icon"
-                  className="w-6 h-6 object-contain"
+                  width={24}
+                  height={24}
+                  className="object-contain"
                 />
               </div>
-              <div>
-                <img
+              <div className="h-6 relative">
+                <Image
                   src="/img/maind.png"
                   alt="Digital Note"
-                  className="h-6 object-contain"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 120px, 150px"
                 />
               </div>
             </Link>
