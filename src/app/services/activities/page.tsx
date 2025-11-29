@@ -15,6 +15,7 @@ type Resource = {
   category: string;
   createdAt: string;
   popularScore: number;
+  fileUrl?: string;
 };
 
 // 사이드 메뉴는 API에서 불러옵니다. (fallback 포함)
@@ -62,30 +63,74 @@ export default function ActivitiesPage() {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<"new" | "popular" | "title">("new");
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/admin/activities-menu");
-        const data = await res.json() as Array<{ visible: boolean; order: number; name: string }>;
-        const visible = data.filter((d) => d.visible).sort((a, b) => a.order - b.order);
-        // "전체" 중복 제거 후 맨 앞에 추가
-        const categoryNames = visible.map((v) => v.name).filter((name) => name !== "전체");
-        const names = ["전체", ...categoryNames];
-        // 중복 제거 (Set 사용)
-        const uniqueNames = Array.from(new Set(names));
-        setCategories(uniqueNames);
-      } catch {}
+        // 카테고리 메뉴와 활동자료를 동시에 가져오기
+        const [menuRes, resourcesRes] = await Promise.all([
+          fetch("/api/admin/activities-menu"),
+          fetch("/api/admin/activities-resources?visible=true"),
+        ]);
+        
+        // 카테고리 메뉴 처리
+        if (menuRes.ok) {
+          const menuData = await menuRes.json() as Array<{ visible: boolean; order: number; name: string }>;
+          const visible = menuData.filter((d) => d.visible).sort((a, b) => a.order - b.order);
+          // "전체" 중복 제거 후 맨 앞에 추가
+          const categoryNames = visible.map((v) => v.name).filter((name) => name !== "전체");
+          const names = ["전체", ...categoryNames];
+          // 중복 제거 (Set 사용)
+          const uniqueNames = Array.from(new Set(names));
+          setCategories(uniqueNames);
+        }
+        
+        // 활동자료 데이터 처리
+        if (resourcesRes.ok) {
+          const resourcesData = await resourcesRes.json();
+          const resourcesList = resourcesData.resources || [];
+          
+          console.log("활동자료 데이터:", resourcesList); // 디버깅용
+          
+          // Resource 타입에 맞게 변환
+          const convertedResources: Resource[] = resourcesList.map((r: any) => ({
+            id: r.id || r.resourceId, // API에서 id 또는 resourceId로 올 수 있음
+            title: r.title || "",
+            subtitle: r.subtitle || undefined,
+            thumbnail: r.thumbnail || undefined,
+            tags: Array.isArray(r.tags) ? r.tags : [],
+            category: r.category || "",
+            createdAt: r.createdAt || new Date().toISOString(),
+            popularScore: r.popularScore || 0,
+            fileUrl: r.fileUrl || undefined,
+          }));
+          
+          setResources(convertedResources);
+          console.log("변환된 활동자료:", convertedResources.length, "개"); // 디버깅용
+        } else {
+          console.error("활동자료 API 호출 실패:", resourcesRes.status);
+          const errorText = await resourcesRes.text();
+          console.error("에러 내용:", errorText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        // 에러 발생 시에도 데모 데이터는 사용하지 않고 빈 배열 유지
+      } finally {
+        setLoadingResources(false);
+      }
     })();
   }, []);
 
   const filtered = useMemo(() => {
-    const base = DEMO_RESOURCES.filter((r) =>
+    // 실제 데이터베이스 데이터만 사용 (데모 데이터 제거)
+    const base = resources.filter((r) =>
       category === "전체" ? true : r.category === category
     ).filter((r) =>
-      query.trim() ? r.title.includes(query.trim()) || r.tags.some(t => t.includes(query.trim())) : true
+      query.trim() ? r.title.toLowerCase().includes(query.trim().toLowerCase()) || (r.tags && r.tags.some((t: string) => t.toLowerCase().includes(query.trim().toLowerCase()))) : true
     ).filter((r) =>
-      selectedTopics.length ? selectedTopics.every(t => r.tags.includes(t)) : true
+      selectedTopics.length ? selectedTopics.every(t => r.tags && r.tags.includes(t)) : true
     );
 
     const sorted = [...base].sort((a, b) => {
@@ -95,7 +140,7 @@ export default function ActivitiesPage() {
     });
 
     return sorted;
-  }, [category, query, selectedTopics, sortBy]);
+  }, [resources, category, query, selectedTopics, sortBy]);
 
   const PAGE_SIZE = 12;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -209,7 +254,14 @@ export default function ActivitiesPage() {
 
             {/* Resource list */}
             <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
-              {pageItems.length === 0 ? (
+              {loadingResources ? (
+                <div className="py-16 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto flex items-center justify-center mb-4 animate-pulse">
+                    <FileText className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-lg font-medium text-gray-600">로딩 중...</p>
+                </div>
+              ) : pageItems.length === 0 ? (
                 <div className="py-16 text-center">
                   <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto flex items-center justify-center mb-4">
                     <FileText className="h-8 w-8 text-gray-400" />
@@ -254,53 +306,76 @@ export default function ActivitiesPage() {
 function ResourceGrid({ items }: { items: Resource[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-      {items.map((r) => (
-        <article key={r.id} className="group relative border-2 border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-lg hover:border-teal-300 transition-all">
-          <div className="relative aspect-[3/4] bg-gray-100">
-            <Image
-              src={r.thumbnail ?? "/img/cover-fallback.png"}
-              alt={r.title}
-              fill
-              sizes="(max-width: 640px) 50vw, 200px"
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute top-2 left-2 flex gap-1.5">
-              {r.tags.slice(0, 2).map((t) => (
-                <span key={t} className="px-2 py-0.5 bg-white/95 border border-gray-200 rounded text-xs font-semibold text-gray-700 shadow-sm">
-                  {t}
-                </span>
-              ))}
+      {items.map((r) => {
+        const fileUrl = r.fileUrl;
+        const tags = Array.isArray(r.tags) ? r.tags : [];
+        
+        return (
+          <article key={r.id} className="group relative border-2 border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-lg hover:border-teal-300 transition-all">
+            <div className="relative aspect-[3/4] bg-gray-100">
+              <Image
+                src={r.thumbnail || "/img/cover-fallback.png"}
+                alt={r.title}
+                fill
+                sizes="(max-width: 640px) 50vw, 200px"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              {tags.length > 0 && (
+                <div className="absolute top-2 left-2 flex gap-1.5">
+                  {tags.slice(0, 2).map((t, idx) => (
+                    <span key={`${r.id}-tag-${idx}`} className="px-2 py-0.5 bg-white/95 border border-gray-200 rounded text-xs font-semibold text-gray-700 shadow-sm">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-          <div className="p-3">
-            <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-[2.75rem] mb-1">{r.title}</h3>
-            <p className="text-xs text-gray-500 line-clamp-1">{r.subtitle}</p>
-          </div>
-          <div className="px-3 pb-3 flex flex-col gap-2">
-            <span className="text-xs text-gray-600 font-medium">{r.category}</span>
-            <div className="flex items-center gap-2">
-              <button
-                className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                title="활동자료 보기"
-              >
-                <Eye className="h-3 w-3" />
-                <span>보기</span>
-              </button>
-              <button
-                className="flex-1 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                title="PDF 다운로드"
-                onClick={() => {
-                  // 데모 단계: 실제 API 연동 전 안내
-                  alert('다운로드는 준비 중입니다.');
-                }}
-              >
-                <Download className="h-3 w-3" />
-                <span>다운</span>
-              </button>
+            <div className="p-3">
+              <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-[2.75rem] mb-1">{r.title}</h3>
+              {r.subtitle && (
+                <p className="text-xs text-gray-500 line-clamp-1">{r.subtitle}</p>
+              )}
             </div>
-          </div>
-        </article>
-      ))}
+            <div className="px-3 pb-3 flex flex-col gap-2">
+              <span className="text-xs text-gray-600 font-medium">{r.category}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="활동자료 보기"
+                  disabled={!fileUrl}
+                  onClick={() => {
+                    if (fileUrl) {
+                      window.open(fileUrl, '_blank');
+                    }
+                  }}
+                >
+                  <Eye className="h-3 w-3" />
+                  <span>보기</span>
+                </button>
+                <button
+                  className="flex-1 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="PDF 다운로드"
+                  disabled={!fileUrl}
+                  onClick={() => {
+                    if (fileUrl) {
+                      // 다운로드를 위해 a 태그 생성
+                      const link = document.createElement('a');
+                      link.href = fileUrl;
+                      link.download = `${r.title}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }}
+                >
+                  <Download className="h-3 w-3" />
+                  <span>다운</span>
+                </button>
+              </div>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // app/(public)/login/page.tsx
 
 import Link from "next/link";
+import Image from "next/image";
 import LoginForm from "./Loginform"; // 대소문자 일치!
 import type { Metadata } from "next";
 
@@ -38,23 +39,24 @@ export default async function LoginPage({
           {/* Main Header Row */}
           <div className="flex items-center justify-between gap-8">
             {/* Brand Logo */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0 -mt-8">
-              <div className="h-12 w-12 flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
-                  <g transform="translate(24,24)">
-                    <circle cx="0" cy="0" r="3" fill="currentColor" />
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                  </g>
-                </svg>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="relative h-10 w-20">
+                <Image
+                  src="/img/OBJECTS.png"
+                  alt="Mindring OBJECTS"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
-              <div className="text-center">
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
+              <div className="relative h-10 w-20">
+                <Image
+                  src="/img/maind.png"
+                  alt="Mindring Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
             </div>
           </div>
@@ -76,8 +78,16 @@ export default async function LoginPage({
           <div className="flex flex-col lg:flex-row justify-between gap-8">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-gray-900">Great Senior</span>
-                <span className="text-lg text-gray-600">network</span>
+                <div className="flex items-center gap-2">
+                  <div className="relative h-8 w-16">
+                    <Image
+                      src="/img/maind.png"
+                      alt="Mindring Logo"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
                 <span className="ml-4 text-sm text-gray-500">제휴문의 | 이메일 무단 수집 거부</span>
               </div>
               <div className="text-sm text-gray-600 space-y-2 max-w-2xl">

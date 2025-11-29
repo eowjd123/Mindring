@@ -1,0 +1,25 @@
+[
+  {
+    "id": "똥",
+    "name": "똥",
+    "groupId": "화투",
+    "groupName": "화투",
+    "original": "/img/coloring/똥-original.png",
+    "outline": "/img/coloring/똥-outline.png",
+    "palette": [
+      {
+        "name": "색상 1",
+        "hex": "#E60012"
+      },
+      {
+        "name": "색상 2",
+        "hex": "#000000"
+      },
+      {
+        "name": "색상 3",
+        "hex": "#005BAC"
+      }
+    ],
+    "createdAt": "2025-11-28T07:26:26.674Z"
+  }
+]

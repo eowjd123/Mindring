@@ -1,10 +1,15 @@
-// 햣햣
+// app/page.tsx
 
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
+import { getSessionUser } from "@/lib/session";
+import { checkAdminPermission } from "@/lib/require-admin";
+import ServiceCardClient from "./ServiceCardClient";
 
-export default function RootPage() {
+export default async function RootPage() {
+  const user = await getSessionUser();
+  const isAdmin = user ? await checkAdminPermission(user.userId) : false;
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Header */}
@@ -13,8 +18,26 @@ export default function RootPage() {
           {/* Top Navigation Bar */}
           <div className="flex items-center justify-end mb-2">
             <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <Link className="hover:text-gray-900 transition-colors" href="/login">로그인(테스트)</Link>
-              <Link className="hover:text-gray-900 transition-colors" href="/signup">회원가입</Link>
+              {user ? (
+                <>
+                  <Link className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</Link>
+                  {isAdmin && (
+                    <Link 
+                      className="bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 transition-colors font-medium" 
+                      href="/admin"
+                    >
+                      관리자 대시보드
+                    </Link>
+                  )}
+                  <Link className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</Link>
+                  <span className="text-gray-700">{user.name || user.email}</span>
+                </>
+              ) : (
+                <>
+                  <Link className="hover:text-gray-900 transition-colors" href="/login">로그인</Link>
+                  <Link className="hover:text-gray-900 transition-colors" href="/signup">회원가입</Link>
+                </>
+              )}
               <Link className="hover:text-gray-900 transition-colors" href="/plan">이용권</Link>
               <Link className="hover:text-gray-900 transition-colors" href="/support">고객센터</Link>
               <button className="bg-teal-400 hover:bg-teal-500 text-white w-7 h-7 rounded text-xs font-medium flex items-center justify-center transition-colors">
@@ -96,7 +119,7 @@ export default function RootPage() {
           <h2 id="services-heading" className="sr-only">서비스 목록</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {SERVICES.map((service) => (
-              <ServiceCard key={service.id} {...service} />
+              <ServiceCardClient key={service.id} {...service} isAuthenticated={!!user} />
             ))}
           </div>
         </section>
@@ -204,51 +227,6 @@ function YoutubeIcon() {
   );
 }
 
-// Service Card Component
-function ServiceCard({ 
-  title, 
-  subtitle, 
-  variant, 
-  selected,
-  href 
-}: ServiceType) {
-  return (
-    <div className="group relative">
-      <Link
-        href={href}
-        className={`
-          block rounded-3xl p-8 h-64 text-center transition-all duration-300 shadow-sm
-          hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-teal-100
-          ${selected ? "bg-white border-4 border-red-500" : variant.bg}
-        `}
-      >
-        {/* Status Indicator */}
-        <div className={`
-          absolute top-4 left-4 w-6 h-6 border-2 rounded-full flex items-center justify-center
-          ${selected ? "border-red-500 text-red-500" : "border-white text-white"}
-        `}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 16.17 4.83 12l-1.42 1.41L9 19l12-12-1.41-1.41z" />
-          </svg>
-        </div>
-
-        <div className="h-full flex flex-col justify-center">
-          <div className="mb-6">
-            {variant.icon}
-          </div>
-          
-          <h3 className={`font-bold text-xl mb-3 ${selected ? "text-red-600" : "text-white"}`}>
-            {title}
-          </h3>
-          
-          <p className={`text-sm leading-relaxed ${selected ? "text-red-500" : "text-white/90"}`}>
-            {subtitle}
-          </p>
-        </div>
-      </Link>
-    </div>
-  );
-}
 
 /* ---------------------------
    Service Icon Components
@@ -287,8 +265,22 @@ const ServiceIcons = {
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_3.png"  // ← public/img/icon_1.png
+          src="/img/icon_3.png"  // ← public/img/icon_3.png
           alt="인지클래스 아이콘"
+          fill
+          sizes="96px"
+          className="object-contain drop-shadow-md"
+          priority
+        />
+      </div>
+    </div>
+  ),
+  smartCognitive: (
+    <div className="w-24 h-24 flex items-center justify-center mx-auto">
+      <div className="relative w-24 h-24">
+        <Image
+          src="/img/icon_3.png"  // 스마트 인지관리 아이콘
+          alt="스마트 인지관리 아이콘"
           fill
           sizes="96px"
           className="object-contain drop-shadow-md"
@@ -379,6 +371,7 @@ const SERVICE_VARIANTS = {
   yellow: { bg: "bg-gradient-to-br from-yellow-400 to-orange-500", icon: ServiceIcons.cap },
   sky: { bg: "bg-gradient-to-br from-sky-400 to-blue-500", icon: ServiceIcons.clipboard },
   whiteRed: { bg: "bg-white border-4 border-red-500", icon: ServiceIcons.heart },
+  indigo: { bg: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500", icon: ServiceIcons.smartCognitive },
 } as const;
 
 // Types
@@ -391,22 +384,20 @@ interface ServiceType {
   href: string;
   variant: ServiceVariant;
   selected?: boolean;
-}
-
-// Services Data
+}// Services Data
 const SERVICES: ServiceType[] = [
   {
     id: "puzzle",
     title: "기억퍼즐",
     subtitle: "디지털 퍼즐 활동",
-    href: "https://puzzle-hxga.vercel.app",   // ✅ 외부 URL로 변경
+    href: "/puzzle-home",   // ✅ Puzzle 프로젝트 대시보드로 이동
     variant: SERVICE_VARIANTS.teal,
   },
   {
     id: "lifebook",
     title: "라이프북",
     subtitle: "AI 자서전 만들기",
-    href: "/login",
+    href: "/services/lifebook",
     variant: SERVICE_VARIANTS.blue,
   },
   {
@@ -415,6 +406,13 @@ const SERVICES: ServiceType[] = [
     subtitle: "인지 건강 콘텐츠 체험",
     href: "/services/cognitive",
     variant: SERVICE_VARIANTS.purple,
+  },
+  {
+    id: "smart-cognitive",
+    title: "스마트 인지관리",
+    subtitle: "뇌 건강 검사 및 관리",
+    href: "/services/smart-cognitive",
+    variant: SERVICE_VARIANTS.indigo,
   },
   {
     id: "coloring",
@@ -453,3 +451,5 @@ const SERVICES: ServiceType[] = [
     selected: true,
   },
 ];
+
+

@@ -2,6 +2,7 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "DigitalNote",
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased font-suit">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

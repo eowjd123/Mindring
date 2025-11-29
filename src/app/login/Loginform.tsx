@@ -5,12 +5,13 @@ import { ArrowRight, Eye, EyeOff, Home, Lock, Mail } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Props = { initialError?: string };
 
 export default function LoginForm({ initialError = "" }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   // 폼 상태
@@ -70,7 +71,10 @@ export default function LoginForm({ initialError = "" }: Props) {
         setErr(humanizeError(j?.error ?? "로그인에 실패했어요. 다시 시도해주세요."));
         return;
       }
-      startTransition(() => router.replace("/dashboard"));
+      // returnUrl이 있으면 해당 페이지로, 없으면 홈으로 이동
+      const returnUrl = searchParams.get("returnUrl");
+      const redirectPath = returnUrl ? decodeURIComponent(returnUrl) : "/";
+      startTransition(() => router.replace(redirectPath));
     } catch {
       setErr("네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.");
     }
@@ -98,26 +102,6 @@ export default function LoginForm({ initialError = "" }: Props) {
         <div className={(compact ? "px-5 py-4" : "px-6 py-6") + " flex-1"}>
           {/* 로고 + 카피 */}
           <div className={"text-center " + (compact ? "mb-3" : "mb-5")}>
-            {/* 브랜드 로고 - 메인 페이지와 동일한 스타일 */}
-            <div className="flex flex-col items-center gap-2 mb-4">
-              <div className="h-12 w-12 flex items-center justify-center">
-                <svg width="48" height="48" viewBox="0 0 48 48" className="text-teal-400">
-                  <g transform="translate(24,24)">
-                    <circle cx="0" cy="0" r="3" fill="currentColor" />
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(0)"/>
-                    <circle cx="16" cy="0" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(60)"/>
-                    <circle cx="8" cy="13.86" r="2" fill="currentColor"/>
-                    <ellipse cx="0" cy="0" rx="16" ry="6" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(120)"/>
-                    <circle cx="-8" cy="13.86" r="2" fill="currentColor"/>
-                  </g>
-                </svg>
-              </div>
-              <div className="text-center">
-                <h1 className="text-lg font-bold text-gray-900">그레이트 시니어</h1>
-                <p className="text-sm text-gray-600">네트워크</p>
-              </div>
-            </div>
             {/* 화면이 낮으면 설명은 더 작게 또는 숨김 */}
             {!compact ? (
               <p className="text-gray-600 text-xs leading-relaxed">
@@ -297,7 +281,6 @@ export default function LoginForm({ initialError = "" }: Props) {
               <Home className="w-3.5 h-3.5 mr-1 group-hover:-translate-x-0.5 transition-transform" />
               홈으로
             </Link>
-            <span className="font-semibold text-gray-600">그레이트 시니어</span>
           </div>
         </div>
       </div>

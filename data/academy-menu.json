@@ -1,0 +1,65 @@
+[
+  {
+    "id": "all",
+    "name": "전체",
+    "slug": "all",
+    "order": 0,
+    "visible": true
+  },
+  {
+    "id": "certificate",
+    "name": "자격증",
+    "slug": "certificate",
+    "order": 1,
+    "visible": true
+  },
+  {
+    "id": "self-development",
+    "name": "자기계발",
+    "slug": "self-development",
+    "order": 2,
+    "visible": true
+  },
+  {
+    "id": "health",
+    "name": "건강",
+    "slug": "health",
+    "order": 3,
+    "visible": true
+  },
+  {
+    "id": "hobby",
+    "name": "취미",
+    "slug": "hobby",
+    "order": 4,
+    "visible": true
+  },
+  {
+    "id": "technology",
+    "name": "기술",
+    "slug": "technology",
+    "order": 5,
+    "visible": true
+  },
+  {
+    "id": "language",
+    "name": "언어",
+    "slug": "language",
+    "order": 6,
+    "visible": true
+  },
+  {
+    "id": "business",
+    "name": "비즈니스",
+    "slug": "business",
+    "order": 7,
+    "visible": true
+  },
+  {
+    "id": "e5635705-094a-4bb0-9dfb-9fe3845bb41c",
+    "name": "실생활 활용 교육",
+    "slug": "menu-9",
+    "order": 9,
+    "visible": true
+  }
+]
