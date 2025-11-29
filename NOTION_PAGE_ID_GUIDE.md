@@ -55,7 +55,7 @@ https://www.notion.so/Mindring-Development-Log-abc123def456ghi789jkl012mno345pq?
 
 ## 🔧 .env 파일에 추가하기
 
-페이지 ID를 찾은 후, **로컬 개발 환경에서만** 사용하는 `.env` 파일에 아래와 같이 환경변수를 추가하세요.
+페이지 ID를 찾은 후, **로컬 개발 환경에서만** 사용하는 `.env` 파일에 환경변수를 추가하세요.
 
 - 노션 API 토큰용 환경변수 (예: `MY_NOTION_SECRET`)
 - 노션 페이지 ID용 환경변수 (예: `MY_NOTION_PAGE_ID`)
