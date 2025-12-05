@@ -5,7 +5,7 @@ import { checkAdminPermission } from "@/lib/require-admin";
 
 export async function GET(
   req: Request,
-  { params }: { params: { assessmentId: string } }
+  { params }: { params: Promise<{ assessmentId: string }> }
 ) {
   try {
     // 인증 체크
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { assessmentId } = params;
+    const { assessmentId } = await params;
 
     // 검사 결과 상세 조회
     const assessment = await prisma.cognitiveAssessment.findUnique({

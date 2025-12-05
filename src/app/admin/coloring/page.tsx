@@ -667,7 +667,7 @@ export default function AdminColoringPage() {
                   <button
                     onClick={() => {
                       setShowUploadModal(false);
-                      setUploadData({ name: "", originalFile: null, outlineFile: null });
+                      setUploadData({ name: "", groupId: "", originalFile: null, outlineFile: null, palette: [] });
                       setMessage(null);
                     }}
                     className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"

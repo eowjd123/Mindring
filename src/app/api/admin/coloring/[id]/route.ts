@@ -24,7 +24,7 @@ async function saveTemplates(templates: any[]) {
 // DELETE: 도안 삭제
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getSessionUser();
@@ -37,7 +37,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const templates = await readTemplates();
     const template = templates.find((t: any) => t.id === id);
 

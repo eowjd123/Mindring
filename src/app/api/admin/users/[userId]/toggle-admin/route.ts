@@ -5,7 +5,7 @@ import { checkAdminPermission } from "@/lib/require-admin";
 
 export async function POST(
   req: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     // 인증 체크
@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { userId } = params;
+    const { userId } = await params;
     const { isAdmin: newIsAdmin } = await req.json();
 
     // 자기 자신의 권한을 해제하는 것은 방지

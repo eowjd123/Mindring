@@ -5,7 +5,7 @@ import { checkAdminPermission } from "@/lib/require-admin";
 
 export async function GET(
   req: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     // 인증 체크
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { userId } = params;
+    const { userId } = await params;
 
     // 사용자 정보 조회
     const userDetail = await prisma.user.findUnique({

@@ -225,7 +225,7 @@ export default function AdminAcademyPage() {
         if (uploaded) thumbnailUrl = uploaded;
       }
 
-      const payload = {
+      const payload: any = {
         ...courseForm,
         thumbnail: thumbnailUrl,
         price: courseForm.price ? Number(courseForm.price) : null,

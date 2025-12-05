@@ -230,7 +230,7 @@ export default function AdminActivitiesPage() {
         if (uploaded) fileUrl = uploaded;
       }
 
-      const payload = {
+      const payload: any = {
         ...resourceForm,
         thumbnail: thumbnailUrl,
         fileUrl: fileUrl,
