@@ -1,38 +1,34 @@
-name: Deploy Mindring
+name: Deploy to Server
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:   # 👈 이 줄은 push: 밖으로 뺀다!
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: 🚀 SSH into NHN Cloud and deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            cd /home/ubuntu/mindring
-
-            echo "📥 최신 코드 가져오기"
-            git pull origin main
-
-            echo "🧹 기존 컨테이너 정리"
-            sudo docker stop mindring || true
-            sudo docker rm mindring || true
-            sudo docker rmi mindring:latest || true
-
-            echo "🔨 새 이미지 빌드"
-            sudo docker build --no-cache -t mindring:latest -f ./Dockerfile .
-
-            echo "🚀 새 컨테이너 실행"
-            sudo docker run -d -p 3000:3000 --env-file .env --name mindring mindring:latest
-
-            echo "✅ Mindring 배포 완료!"
-# trigger workflow
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        HOST: ${{ secrets.SERVER_HOST }}
+        USERNAME: ${{ secrets.SERVER_USER }}
+        SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /home/ubuntu/mindring
+          
+          echo "📥 최신 코드 가져오기"
+          git pull origin main
+          
+          echo "📦 패키지 설치"
+          npm install
+          
+          echo "🔨 프로젝트 빌드"
+          npm run build
+          
+          echo "🔄 PM2 재시작"
+          pm2 reload mindring || pm2 start npm --name "mindring" -- start
+          
+          echo "✅ 배포 완료!"
+          pm2 status
