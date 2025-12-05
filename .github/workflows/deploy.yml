@@ -12,9 +12,9 @@ jobs:
     - name: Deploy via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
-        HOST: ${{ secrets.SERVER_HOST }}
-        USERNAME: ${{ secrets.SERVER_USER }}
-        SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
         script: |
           cd /home/ubuntu/mindring
           
