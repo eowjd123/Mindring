@@ -1,14 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 interface ServiceCardClientProps {
   id: string;
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   href: string;
   variant: {
     bg: string;
@@ -16,6 +16,8 @@ interface ServiceCardClientProps {
   };
   selected?: boolean;
   isAuthenticated: boolean;
+  className?: string; // from previous step
+  imageSrc?: string;
 }
 
 export default function ServiceCardClient({
@@ -25,6 +27,8 @@ export default function ServiceCardClient({
   selected,
   href,
   isAuthenticated,
+  className,
+  imageSrc,
 }: ServiceCardClientProps) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
@@ -45,50 +49,66 @@ export default function ServiceCardClient({
   };
 
   return (
-    <div className="group relative">
+    <div className={`group relative ${className || ""}`}>
       <Link
         href={href}
         onClick={handleClick}
         className={`
-          block rounded-3xl p-8 h-64 text-center transition-all duration-300 shadow-sm
+          block rounded-3xl h-64 text-center transition-all duration-300 shadow-sm
           hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-teal-100
-          ${selected ? "bg-white border-4 border-red-500" : variant.bg}
+          ${selected ? "bg-white border-4 border-red-500" : (imageSrc ? "bg-transparent" : variant.bg)}
           ${!isAuthenticated ? "cursor-pointer" : ""}
           ${isChecking ? "opacity-75" : ""}
+          ${!imageSrc ? "p-8" : "p-0 overflow-hidden"} 
         `}
       >
-        {/* Status Indicator */}
-        <div className={`
-          absolute top-4 left-4 w-6 h-6 border-2 rounded-full flex items-center justify-center
-          ${selected ? "border-red-500 text-red-500" : "border-white text-white"}
-        `}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 16.17 4.83 12l-1.42 1.41L9 19l12-12-1.41-1.41z" />
-          </svg>
-        </div>
+        {imageSrc ? (
+             <div className="relative w-full h-full">
+                <Image 
+                    src={imageSrc} 
+                    alt={title || "Service Image"} 
+                    fill 
+                    className="object-fill"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority
+                />
+             </div>
+        ) : (
+            <>
+                {/* Status Indicator */}
+                <div className={`
+                absolute top-4 left-4 w-6 h-6 border-2 rounded-full flex items-center justify-center
+                ${selected ? "border-red-500 text-red-500" : "border-gray-300 text-gray-400"}
+                `}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17 4.83 12l-1.42 1.41L9 19l12-12-1.41-1.41z" />
+                </svg>
+                </div>
 
-        {/* 로그인 필요 알림 (로그인하지 않은 경우) */}
-        {!isAuthenticated && (
-          <div className="absolute top-4 right-4">
-            <div className="bg-yellow-500/90 text-white text-xs px-2 py-1 rounded-full font-semibold">
-              로그인 필요
-            </div>
-          </div>
+                {/* 로그인 필요 알림 (로그인하지 않은 경우) */}
+                {!isAuthenticated && (
+                <div className="absolute top-4 right-4">
+                    <div className="bg-yellow-500/90 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                    로그인 필요
+                    </div>
+                </div>
+                )}
+
+                <div className="h-full flex flex-col justify-center">
+                <div className="mb-6">
+                    {variant.icon}
+                </div>
+                
+                <h3 className={`font-bold text-xl mb-3 ${selected ? "text-red-600" : "text-gray-900"}`}>
+                    {title}
+                </h3>
+                
+                <p className={`text-sm leading-relaxed ${selected ? "text-red-500" : "text-gray-600"}`}>
+                    {subtitle}
+                </p>
+                </div>
+            </>
         )}
-
-        <div className="h-full flex flex-col justify-center">
-          <div className="mb-6">
-            {variant.icon}
-          </div>
-          
-          <h3 className={`font-bold text-xl mb-3 ${selected ? "text-red-600" : "text-white"}`}>
-            {title}
-          </h3>
-          
-          <p className={`text-sm leading-relaxed ${selected ? "text-red-500" : "text-white/90"}`}>
-            {subtitle}
-          </p>
-        </div>
       </Link>
     </div>
   );

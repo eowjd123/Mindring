@@ -1,7 +1,8 @@
 "use client";
 
+import { Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
 import React, { useState } from "react";
-import { Plus, Edit, Trash2, Eye, Search } from "lucide-react";
+
 import Link from "next/link";
 
 interface CognitiveGame {

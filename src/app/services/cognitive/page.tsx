@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Home, ChevronRight, ArrowLeft, ArrowRight, Pause } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, ChevronRight, Home, Pause, Search } from "lucide-react";
+import React, { useEffect, useState } from "react";
+
 import Image from "next/image";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 // 게임 카테고리 타입
 type GameCategory = "all" | "memory" | "attention" | "language" | "visuospatial" | "orientation";
@@ -17,6 +19,7 @@ interface Game {
   categoryLabel: string;
   imageUrl?: string;
   graphicImageUrl?: string; // 카드 내부 그래픽 이미지
+  description?: string;
   status?: GameStatus;
   color: string;
 }
@@ -30,8 +33,15 @@ const CATEGORY_COLORS = {
   orientation: "from-green-400 to-green-600",
 };
 
+// 게임 카테고리 데이터 타입
+interface GameCategoryData {
+  id: GameCategory;
+  name: string;
+  games: Game[];
+}
+
 // 게임 카테고리 정의
-const GAME_CATEGORIES = {
+const GAME_CATEGORIES: Record<GameCategory, GameCategoryData> = {
   all: {
     id: "all" as GameCategory,
     name: "전체",
@@ -44,46 +54,16 @@ const GAME_CATEGORIES = {
       { 
         id: "memory-1", 
         title: "회상카드 맞추기", 
+        description: "뒤집힌 카드를 기억하고 같은 짝을 찾는 전형적인 메모리 게임입니다.",
         category: "memory" as GameCategory,
         categoryLabel: "게임",
         status: "not-started" as GameStatus,
         color: CATEGORY_COLORS.memory,
       },
-      { 
-        id: "memory-2", 
-        title: "사진 기억하기", 
-        category: "memory" as GameCategory,
-        categoryLabel: "게임",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.memory,
-      },
-      { 
-        id: "memory-3", 
-        title: "인물 맞추기", 
-        category: "memory" as GameCategory,
-        categoryLabel: "게임",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.memory,
-      },
-      { 
-        id: "memory-4", 
-        title: "단어 짝 맞추기", 
-        category: "memory" as GameCategory,
-        categoryLabel: "게임",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.memory,
-      },
-      { 
-        id: "memory-5", 
-        title: "속담 완성하기", 
-        category: "memory" as GameCategory,
-        categoryLabel: "게임",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.memory,
-      },
-      { 
-        id: "memory-6", 
-        title: "기억 게임", 
+      {
+        id: "color-sequence",
+        title: "색상 순서 기억하기",
+        description: "컴퓨터가 보여준 색상의 순서를 기억해 동일한 순서로 버튼을 누르는 게임입니다.",
         category: "memory" as GameCategory,
         categoryLabel: "게임",
         status: "not-started" as GameStatus,
@@ -105,7 +85,7 @@ const GAME_CATEGORIES = {
       },
       { 
         id: "attention-2", 
-        title: "색상 구분하기", 
+        title: "같은 그림 터치하기", 
         category: "attention" as GameCategory,
         categoryLabel: "주의력",
         status: "not-started" as GameStatus,
@@ -113,7 +93,7 @@ const GAME_CATEGORIES = {
       },
       { 
         id: "attention-3", 
-        title: "퀴즈 풀기", 
+        title: "단어 찾기 퍼즐", 
         category: "attention" as GameCategory,
         categoryLabel: "주의력",
         status: "not-started" as GameStatus,
@@ -129,7 +109,7 @@ const GAME_CATEGORIES = {
       },
       { 
         id: "attention-5", 
-        title: "순서맞추기", 
+        title: "숫자 이어주기", 
         category: "attention" as GameCategory,
         categoryLabel: "주의력",
         status: "not-started" as GameStatus,
@@ -158,14 +138,6 @@ const GAME_CATEGORIES = {
         color: CATEGORY_COLORS.language,
       },
       { 
-        id: "language-3", 
-        title: "낱말 순서 맞추기", 
-        category: "language" as GameCategory,
-        categoryLabel: "언어능력",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.language,
-      },
-      { 
         id: "language-4", 
         title: "이야기 완성하기", 
         category: "language" as GameCategory,
@@ -188,32 +160,8 @@ const GAME_CATEGORIES = {
     name: "시공간능력 게임",
     games: [
       { 
-        id: "visuospatial-1", 
-        title: "길 찾기", 
-        category: "visuospatial" as GameCategory,
-        categoryLabel: "시공간능력",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.visuospatial,
-      },
-      { 
-        id: "visuospatial-2", 
-        title: "다른 그림 찾기", 
-        category: "visuospatial" as GameCategory,
-        categoryLabel: "시공간능력",
-        status: "completed" as GameStatus,
-        color: CATEGORY_COLORS.visuospatial,
-      },
-      { 
         id: "visuospatial-3", 
         title: "색상 구분 테스트", 
-        category: "visuospatial" as GameCategory,
-        categoryLabel: "시공간능력",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.visuospatial,
-      },
-      { 
-        id: "visuospatial-4", 
-        title: "순서 맞추기", 
         category: "visuospatial" as GameCategory,
         categoryLabel: "시공간능력",
         status: "not-started" as GameStatus,
@@ -243,23 +191,7 @@ const GAME_CATEGORIES = {
       },
       { 
         id: "orientation-2", 
-        title: "내 고향 퀴즈", 
-        category: "orientation" as GameCategory,
-        categoryLabel: "지남력",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.orientation,
-      },
-      { 
-        id: "orientation-3", 
-        title: "옛날 물건 맞추기", 
-        category: "orientation" as GameCategory,
-        categoryLabel: "지남력",
-        status: "not-started" as GameStatus,
-        color: CATEGORY_COLORS.orientation,
-      },
-      { 
-        id: "orientation-4", 
-        title: "길 찾기", 
+        title: "날짜·시간 맞추기", 
         category: "orientation" as GameCategory,
         categoryLabel: "지남력",
         status: "not-started" as GameStatus,
@@ -290,7 +222,7 @@ const ALL_GAMES: Game[] = [
 const RECOMMENDED_GAMES: Game[] = [
   GAME_CATEGORIES.attention.games[3], // 낱말 연결 게임
   GAME_CATEGORIES.language.games[0], // 속담 완성하기
-  GAME_CATEGORIES.visuospatial.games[1], // 다른 그림 찾기
+  GAME_CATEGORIES.attention.games[0], // 다른 그림 찾기
   GAME_CATEGORIES.orientation.games[0], // 인물 맞추기
 ];
 
@@ -300,6 +232,14 @@ export default function CognitivePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [gameStatuses, setGameStatuses] = useState<Record<string, GameStatus>>({});
+
+  useEffect(() => {
+    const savedStatus = localStorage.getItem("mindring_game_status");
+    if (savedStatus) {
+      setGameStatuses(JSON.parse(savedStatus));
+    }
+  }, []);
 
   // 필터링된 게임 목록
   const filteredGames = React.useMemo(() => {
@@ -318,28 +258,65 @@ export default function CognitivePage() {
     e.preventDefault();
   };
 
+
+
+  // 게임 라우트 매핑
   const handleGameStart = (gameId: string) => {
-    console.log(`Starting game: ${gameId}`);
+    const gameRoutes: Record<string, string> = {
+      'memory-1': '/services/cognitive/memory-match',
+      'color-sequence': '/services/cognitive/color-sequence',
+      'attention-1': '/services/cognitive/find-difference',
+      'attention-2': '/services/cognitive/same-match',
+      'attention-3': '/services/cognitive/word-search',
+      'attention-5': '/services/cognitive/connect-numbers',
+      'orientation-1': '/services/cognitive/person-quiz',
+      'orientation-2': '/services/cognitive/time-quiz',
+      'language-1': '/services/cognitive/proverb',
+      'language-2': '/services/cognitive/word-chain',
+      // 다른 게임들도 여기에 추가 가능
+    };
+    
+    const route = gameRoutes[gameId];
+    if (route) {
+      // Update status to learning
+      const newStatus = { ...gameStatuses, [gameId]: "learning" as GameStatus };
+      setGameStatuses(newStatus);
+      localStorage.setItem("mindring_game_status", JSON.stringify(newStatus));
+      router.push(route);
+    } else {
+      console.warn(`No route found for game: ${gameId}`);
+    }
   };
 
-  const getStatusButton = (status: GameStatus) => {
+  const getStatusButton = (gameId: string) => {
+    const status = gameStatuses[gameId] || "not-started";
+    
     switch (status) {
       case "not-started":
         return (
-          <button className="absolute bottom-4 right-4 w-20 h-20 rounded-full bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center shadow-lg">
+          <button 
+            onClick={() => handleGameStart(gameId)}
+            className="absolute bottom-4 right-4 w-20 h-20 rounded-full bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center shadow-lg"
+          >
             학습하기
           </button>
         );
       case "learning":
         return (
-          <button className="absolute bottom-4 right-4 w-20 h-20 rounded-full bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center shadow-lg border-2 border-orange-400">
+          <button 
+            onClick={() => handleGameStart(gameId)}
+            className="absolute bottom-4 right-4 w-20 h-20 rounded-full bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center shadow-lg border-2 border-orange-400"
+          >
             학습중
           </button>
         );
       case "completed":
         return (
-          <button className="absolute bottom-4 right-4 w-20 h-20 rounded-full bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center shadow-lg border-2 border-orange-400">
-            학습완료
+          <button 
+             onClick={() => handleGameStart(gameId)}
+             className="absolute bottom-4 right-4 w-20 h-20 rounded-full bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center shadow-lg border-2 border-orange-400"
+          >
+            완료
           </button>
         );
     }
@@ -361,7 +338,35 @@ export default function CognitivePage() {
       );
     }
 
-    // 이미지가 없으면 CSS로 그래픽 생성
+    // 특정 게임별 커스텀 그래픽
+    switch (game.id) {
+      case "memory-1":
+        // 메모리 카드 그래픽
+        return (
+          <div className="relative w-32 h-32">
+            <div className="absolute left-2 top-4 w-8 h-10 bg-blue-200/60 rounded border-2 border-blue-400"></div>
+            <div className="absolute left-6 top-6 w-8 h-10 bg-blue-300/60 rounded border-2 border-blue-500"></div>
+            <div className="absolute left-10 top-4 w-8 h-10 bg-blue-400/60 rounded border-2 border-blue-600"></div>
+            <div className="absolute left-14 top-6 w-8 h-10 bg-blue-200/60 rounded border-2 border-blue-400"></div>
+            <div className="text-white text-3xl absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">🃏</div>
+          </div>
+        );
+      case "color-sequence":
+        // 색상 순서 게임 그래픽 (4개 컬러 버튼)
+        return (
+          <div className="relative w-32 h-32">
+            <div className="absolute left-2 top-2 w-6 h-6 bg-red-400 rounded-full border-2 border-red-600"></div>
+            <div className="absolute right-2 top-2 w-6 h-6 bg-green-400 rounded-full border-2 border-green-600"></div>
+            <div className="absolute left-2 bottom-2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-yellow-600"></div>
+            <div className="absolute right-2 bottom-2 w-6 h-6 bg-blue-400 rounded-full border-2 border-blue-600"></div>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-2xl">↻</div>
+          </div>
+        );
+      default:
+        break;
+    }
+
+    // 카테고리별 그래픽
     switch (game.category) {
       case "attention":
         // L자 모양 그래픽 (낱말 연결 게임)
@@ -498,7 +503,7 @@ export default function CognitivePage() {
                 </div>
                 
                 {/* 상태 버튼 - 우측 하단 */}
-                {getStatusButton(game.status || "not-started")}
+                {getStatusButton(game.id)}
               </div>
             ))}
           </div>
@@ -556,13 +561,17 @@ export default function CognitivePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
               {filteredGames.map((game) => (
-                <div
+                <motion.div
                   key={game.id}
-                  className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow border border-gray-200"
+                  whileHover={{ y: -4, boxShadow: "0 12px 24px rgba(0, 0, 0, 0.1)" }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 cursor-pointer"
                 >
                   {/* 게임 이미지 플레이스홀더 */}
-                  <div className={`w-full aspect-video bg-gradient-to-br ${game.color} flex items-center justify-center`}>
-                    <span className="text-white/60 text-sm font-medium">이미지</span>
+                  <div className={`w-full aspect-video bg-gradient-to-br ${game.color} flex items-center justify-center transition-transform hover:scale-105`}>
+                    <div className="p-4">
+                      {getCategoryGraphic(game)}
+                    </div>
                   </div>
                   {/* 게임 정보 */}
                   <div className="p-4">
@@ -572,14 +581,23 @@ export default function CognitivePage() {
                     <h3 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2">
                       {game.title}
                     </h3>
-                    <button
+                    {game.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-3">{game.description}</p>
+                    )}
+                    <motion.button
                       onClick={() => handleGameStart(game.id)}
-                      className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`w-full px-4 py-2 text-white rounded-lg transition-colors font-medium text-sm ${
+                        (gameStatuses[game.id] === "learning") 
+                          ? "bg-green-600 hover:bg-green-700" 
+                          : "bg-indigo-600 hover:bg-indigo-700"
+                      }`}
                     >
-                      시작하기
-                    </button>
+                      {gameStatuses[game.id] === "learning" ? "학습중" : "시작하기"}
+                    </motion.button>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}

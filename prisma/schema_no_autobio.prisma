@@ -1,4 +1,4 @@
-// prisma/schema.prisma
+// prisma/schema_no_autobio.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,46 +9,6 @@ datasource db {
 }
 
 // -------- Enums --------
-
-/// 작품의 상태
-enum WorkStatus {
-  draft      /// 작업중 (임시저장)
-  completed  /// 완성됨
-}
-
-/// 페이지 콘텐츠 유형
-enum PageContentType {
-  text   /// 텍스트 페이지
-  image  /// 이미지 페이지
-  mixed  /// 텍스트+이미지 혼합
-}
-
-/// 용지 사이즈
-enum PaperSize {
-  A4    /// A4 (210×297mm)
-  SHIN  /// 신국판 (152×225mm)
-}
-
-/// 커버 타입
-enum CoverType {
-  soft_matte  /// 소프트커버 무광 코팅
-  hard        /// 하드커버
-  none        /// 커버 없음 (디지털 전용)
-}
-
-/// 내지 종류
-enum InnerPaper {
-  plain  /// 일반지
-  none   /// 선택 안함
-}
-
-/// 인쇄 상태
-enum PrintStatus {
-  pending    /// 인쇄 대기
-  processing /// 인쇄 진행중
-  completed  /// 인쇄 완료
-  cancelled  /// 인쇄 취소
-}
 
 /// 인생그래프 감정 아이콘 종류
 enum Emotion {
@@ -84,10 +44,8 @@ model User {
 
   socialAccounts    SocialAccount[] /// 연결된 소셜 계정들
   sessions          Session[]       /// 로그인 세션들
-  works             Work[]          /// 만든 작품들
   lifeGraphs        LifeGraph[]     /// 작성한 인생그래프
   lifeGraphTags     LifeGraphTag[]  /// 생성한 태그들
-  printOrders       PrintOrder[]    /// 인쇄 주문 내역
   cognitiveAssessments CognitiveAssessment[] /// 인지 검사 결과들
   puzzleRecords     PuzzleRecord[]  /// 퍼즐 게임 기록들
   gameScores        GameScore[]     /// 게임 스코어 기록들
@@ -126,90 +84,6 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
-}
-
-/// 작품 (책 단위)
-model Work {
-  workId     String     @id @default(cuid()) @db.Char(25)
-  userId     String     @db.Char(25)
-  title      String     @db.VarChar(191)
-  coverImage String?    @db.LongText
-  coverTemplateId String?    @db.VarChar(191)
-  status     WorkStatus @default(draft)
-  shareToken String?    @unique @db.Char(32)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-
-  user             User                  @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
-  pages            Page[]
-  exports          Export[]
-  printSpec        PrintSpecification?   /// 인쇄 사양 (1:1 관계)
-  printOrders      PrintOrder[]          /// 인쇄 주문 내역
-
-  @@index([userId, status])
-  @@index([updatedAt])
-}
-
-/// 인쇄 사양 정보
-model PrintSpecification {
-  specId       String      @id @default(cuid()) @db.Char(25)  /// 인쇄 사양 ID
-  workId       String      @unique @db.Char(25)               /// 연결된 작품 ID (1:1 관계)
-  paperSize    PaperSize   @default(A4)                       /// 용지 사이즈
-  coverType    CoverType   @default(soft_matte)               /// 커버 타입  
-  innerPaper   InnerPaper  @default(plain)                    /// 내지 종류
-  orientation  String?     @db.VarChar(20) @default("portrait") /// 방향 ("portrait" | "landscape")
-  
-  // 추가 옵션들 (JSON으로 확장 가능)
-  additionalOptions Json?                                     /// 추가 인쇄 옵션 (특수 코팅, 제본 방식 등)
-  
-  createdAt    DateTime    @default(now())                    /// 생성일시
-  updatedAt    DateTime    @updatedAt                         /// 수정일시
-
-  work         Work        @relation(fields: [workId], references: [workId], onDelete: Cascade)
-  printOrders  PrintOrder[] /// 이 사양으로 주문된 인쇄 내역
-
-  @@index([workId])
-  @@index([paperSize, coverType])
-}
-
-/// 인쇄 주문
-model PrintOrder {
-  orderId      String      @id @default(cuid()) @db.Char(25)  /// 주문 ID
-  userId       String      @db.Char(25)                       /// 주문자 ID
-  workId       String      @db.Char(25)                       /// 작품 ID
-  specId       String      @db.Char(25)                       /// 인쇄 사양 ID
-  quantity     Int         @default(1)                        /// 수량
-  totalPrice   Decimal     @db.Decimal(10,2)                  /// 총 가격
-  status       PrintStatus @default(pending)                  /// 인쇄 상태
-  
-  // 배송 정보
-  shippingAddress Json?                                       /// 배송 주소 정보
-  trackingNumber  String?   @db.VarChar(100)                  /// 택배 송장번호
-  
-  orderDate    DateTime    @default(now())                    /// 주문일시
-  completedAt  DateTime?                                      /// 완료일시
-  
-  user         User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  work         Work                 @relation(fields: [workId], references: [workId], onDelete: Cascade)
-  printSpec    PrintSpecification   @relation(fields: [specId], references: [specId], onDelete: Cascade)
-
-  @@index([userId, orderDate])
-  @@index([status, orderDate])
-  @@index([workId])
-}
-
-/// 작품 내 페이지
-model Page {
-  pageId       String           @id @default(cuid()) @db.Char(25) /// 페이지 ID
-  workId       String           @db.Char(25)                     /// 소속 작품
-  orderIndex   Int                                                /// 작품 내 순서
-  contentType  PageContentType                                    /// 텍스트/이미지/혼합
-  contentJson  Json                                               /// 페이지 데이터(JSON)
-
-  work         Work             @relation(fields: [workId], references: [workId], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([workId, orderIndex])
-  @@unique([workId, orderIndex]) // 작품 내 페이지 순서 유니크
 }
 
 /// 인생그래프 (전체 그래프 설정)
@@ -324,19 +198,6 @@ model LifeGraphComment {
   @@index([graphId, createdAt])
   @@index([pointId])
   @@index([parentId])
-}
-
-/// 내보낸 결과물 (PDF/이미지/Word 등)
-model Export {
-  exportId   String   @id @default(cuid()) @db.Char(25) /// 결과물 ID
-  workId     String   @db.Char(25)                     /// 소속 작품
-  fileType   String   @db.VarChar(16)                  /// 파일 형식 ('PDF' | 'PNG' | 'JPG' | 'WORD')
-  filePath   String   @db.VarChar(512)                 /// 저장 경로
-  createdAt  DateTime @default(now())                  /// 생성 시각
-
-  work       Work     @relation(fields: [workId], references: [workId], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([workId, fileType])
 }
 
 /// 로그인 감사 로그: 성공/실패/사유/메타데이터

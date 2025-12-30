@@ -4,117 +4,115 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import { getSessionUser } from "@/lib/session";
-import { checkAdminPermission } from "@/lib/require-admin";
+
 import ServiceCardClient from "./ServiceCardClient";
+import RecommendedSection from "@/components/main/RecommendedSection";
 
 export default async function RootPage() {
   const user = await getSessionUser();
-  const isAdmin = user ? await checkAdminPermission(user.userId) : false;
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 py-3">
-          {/* Top Navigation Bar */}
-          <div className="flex items-center justify-end mb-2">
-            <nav className="flex items-center gap-6 text-sm text-gray-600">
-              {user ? (
-                <>
-                  <Link className="hover:text-gray-900 transition-colors" href="/dashboard">대시보드</Link>
-                  {isAdmin && (
-                    <Link 
-                      className="bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 transition-colors font-medium" 
-                      href="/admin"
-                    >
-                      관리자 대시보드
-                    </Link>
-                  )}
-                  <Link className="hover:text-gray-900 transition-colors" href="/api/auth/logout">로그아웃</Link>
-                  <span className="text-gray-700">{user.name || user.email}</span>
-                </>
-              ) : (
-                <>
-                  <Link className="hover:text-gray-900 transition-colors" href="/login">로그인</Link>
-                  <Link className="hover:text-gray-900 transition-colors" href="/signup">회원가입</Link>
-                </>
-              )}
-              <Link className="hover:text-gray-900 transition-colors" href="/plan">이용권</Link>
-              <Link className="hover:text-gray-900 transition-colors" href="/support">고객센터</Link>
-              <button className="bg-teal-400 hover:bg-teal-500 text-white w-7 h-7 rounded text-xs font-medium flex items-center justify-center transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 19V20H3V19L5 17V11C5 7.9 7.03 5.17 10 4.29C10.22 4.11 10.46 4 10.71 4H13.29C13.54 4 13.78 4.11 14 4.29C16.97 5.17 19 7.9 19 11V17L21 19ZM12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22Z"/>
-                </svg>
-              </button>
-            </nav>
-          </div>
-
-          {/* Main Header Row */}
-          <div className="flex items-center justify-between gap-8">
-            {/* Brand Logo */}
-            <div className="flex items-center gap-2 flex-shrink-0 -mt-8">
-              <div className="relative h-16 w-32">
-                <Image
-                  src="/img/OBJECTS.png"
-                  alt="Mindring OBJECTS"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              <div className="relative h-16 w-32">
-                <Image
-                  src="/img/maind.png"
-                  alt="Mindring Logo"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
+      {/* Top Bar (Login/Logout, etc) */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="mx-auto max-w-7xl px-4">
+            <div className="flex justify-end items-center py-2 text-[11px] text-gray-500 gap-3">
+                {user ? (
+                   <>
+                     <Link href="/api/auth/logout" className="hover:text-gray-800">로그아웃</Link>
+                     <span className="w-[1px] h-2 bg-gray-300"></span>
+                     <Link href="/mypage" className="hover:text-gray-800">마이페이지</Link>
+                   </>
+                ) : (
+                    <>
+                     <Link href="/login" className="hover:text-gray-800">로그인</Link>
+                     <span className="w-[1px] h-2 bg-gray-300"></span>
+                     <Link href="/signup" className="hover:text-gray-800">회원가입</Link>
+                    </>
+                )}
+                <span className="w-[1px] h-2 bg-gray-300"></span>
+                <div className="flex items-center gap-1">
+                    <span>화면크기</span>
+                    <button className="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center hover:bg-gray-100">+</button>
+                    <button className="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center hover:bg-gray-100">-</button>
+                </div>
             </div>
-
-            {/* Search Bar */}
-            <div className="flex-1 max-w-xl mx-8">
-              <div className="relative">
-                <input
-                  type="search"
-                  aria-label="사이트 검색"
-                  placeholder="검색어를 입력하세요"
-                  className="w-full rounded-full border-2 border-gray-300 bg-white px-6 py-3 text-sm outline-none transition-colors focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
-                />
-                <button 
-                  type="submit"
-                  aria-label="검색 실행" 
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Social Media Icons */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <SocialButton href="https://blog.example.com" label="블로그" className="bg-gray-600">
-                blog
-              </SocialButton>
-              <SocialButton href="https://instagram.com" label="인스타그램" className="bg-gray-600">
-                <InstagramIcon />
-              </SocialButton>
-              <SocialButton href="/profile" label="내 프로필" className="bg-gray-500">
-                <ProfileIcon />
-              </SocialButton>
-              <SocialButton href="https://youtube.com" label="유튜브" className="bg-red-500">
-                <YoutubeIcon />
-              </SocialButton>
-            </div>
-          </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-12">
+      {/* Background Wrapper for Header & Recommended Section */}
+      <div className="bg-cover bg-top bg-no-repeat" style={{ backgroundImage: "url('/img/background.png')" }}>
+        {/* Header */}
+        <header className="sticky top-0 z-20 bg-transparent transition-all">
+          <div className="mx-auto max-w-7xl px-4">
+            {/* Main Navigation Bar */}
+            <div className="flex items-center justify-between py-6">
+                {/* Logo */}
+                <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+                    {/* Icon */}
+                    <div className="relative w-10 h-10">
+                         <Image
+                            src="/img/OBJECTS.png"
+                            alt="Mindring Icon"
+                            fill
+                            className="object-contain"
+                            priority
+                         />
+                    </div>
+                    {/* Text Group */}
+                    <div className="flex flex-col items-start justify-center">
+                        <div className="relative w-24 h-6 mb-1">
+                             <Image
+                                src="/img/maind.png"
+                                alt="Mindring Text"
+                                fill
+                                className="object-contain object-left"
+                                priority
+                             />
+                        </div>
+                        <span className="text-[11px] font-bold text-gray-800 tracking-tight leading-none">스마트인지자극 솔루션</span>
+                    </div>
+                </Link>
+
+                {/* Main Nav Links */}
+                <nav className="hidden lg:flex items-center gap-8 font-bold text-gray-800 text-[16px]">
+                    <Link href="/puzzle-home" className="hover:text-purple-600 transition-colors">AI기억퍼즐</Link>
+                    <Link href="/games" className="hover:text-purple-600 transition-colors">인지게임</Link>
+                    <Link href="/services/cognitive" className="hover:text-purple-600 transition-colors">인지콘텐츠</Link>
+                    <Link href="/workbook" className="hover:text-purple-600 transition-colors">스마트워크북</Link>
+                    <Link href="/education" className="hover:text-purple-600 transition-colors">스마트교육</Link>
+                    <Link href="/smart-care" className="hover:text-purple-600 transition-colors">스마트인지관리</Link>
+                </nav>
+
+                {/* User Status / CRM */}
+                <div className="hidden md:flex items-center gap-4">
+                    {user && (
+                        <div className="flex items-center gap-2 pl-4">
+                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                <div className="w-8 h-8 rounded-full bg-purple-700 flex items-center justify-center text-white shadow-md">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                </div>
+                                <span className="font-semibold text-gray-900">{user.name}</span> 님 안녕하세요.
+                            </div>
+                            <Link href="/status" className="flex items-center gap-1 bg-white hover:bg-gray-50 px-4 py-1.5 rounded-full text-sm font-bold text-purple-700 border-2 border-purple-500 shadow-sm transition-all ml-2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                                학습현황
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Recommended Section (Part of Hero Area) */}
+        <div className="mx-auto max-w-7xl px-4 py-12">
+          <RecommendedSection />
+        </div>
+      </div>
+
+      {/* Main Content (Services) */}
+      <main className="mx-auto max-w-7xl px-4 pb-12 mt-12">
         <section aria-labelledby="services-heading">
           <h2 id="services-heading" className="sr-only">서비스 목록</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -126,51 +124,53 @@ export default async function RootPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <div className="flex flex-col lg:flex-row justify-between gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="relative h-8 w-16">
+      {/* Footer */}
+      <footer className="relative text-gray-300 mt-20 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/img/footer.png')" }}>
+        <div className="mx-auto max-w-7xl px-4 pt-48 pb-8">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+            <div className="flex flex-col gap-4">
+               {/* Logo & Links */}
+               <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                <div className="relative h-10 w-24 brightness-0 invert">
                     <Image
                       src="/img/maind.png"
                       alt="Mindring Logo"
                       fill
                       className="object-contain"
                     />
-                  </div>
                 </div>
-                <span className="ml-4 text-sm text-gray-500">제휴문의 | 이메일 무단 수집 거부</span>
-              </div>
-              <div className="text-sm text-gray-600 space-y-2 max-w-2xl">
-                <p>
-                  <span className="font-medium">마인드라</span> 대표자 서현숙 
-                  <span className="ml-4 font-medium">사업자등록번호:</span> 255-37-01508
-                </p>
+                <div className="flex gap-4 text-sm font-medium">
+                    <Link href="/privacy" className="hover:text-white transition-colors">개인정보처리방침</Link>
+                    <Link href="/terms" className="hover:text-white transition-colors">이용약관</Link>
+                    <Link href="/partnership" className="hover:text-white transition-colors">제휴문의</Link>
+                </div>
+               </div>
+               
+               {/* Address Info */}
+              <div className="text-xs text-gray-400 space-y-1">
                 <p>경기도 고양시 일산동구 중앙로 1036 4층(고양중장년기술창업센터, 1-1층)</p>
-                <p><span className="font-medium">통신판매신고번호:</span> 제2025-고양일산동-0921호</p>
-                <p className="text-gray-500 pt-2">
-                  Copyright 2025. MINDRA INC. All rights reserved.
+                <p>
+                  대표자 : 서현숙 | 사업자등록번호 : 255-37-01508 | 통신판매신고번호 : 제2025-고양일산동-0921호
+                </p>
+                <p className="mt-2">
+                  Copyright © 2025. MINDRA INC. All rights reserved.
                 </p>
               </div>
             </div>
 
-            <div className="lg:text-right">
-              <p className="text-sm text-gray-500 mb-2">FAMILY SITE</p>
-              <div className="flex items-center justify-start lg:justify-end">
-                <span className="text-lg font-bold text-gray-900">
-                  Mind<span className="text-teal-500">ra</span>
-                </span>
-                <button 
-                  aria-label="패밀리 사이트 메뉴 열기"
-                  className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                  </svg>
-                </button>
-              </div>
+            {/* Right Side: Social & Family Site */}
+            <div className="flex flex-col items-end gap-4">
+                <div className="flex items-center gap-3">
+                    <SocialButton href="https://blog.example.com" label="블로그" className="bg-white text-[#2C313C] hover:bg-gray-200">
+                        <span className="font-bold text-[10px]">b</span>
+                    </SocialButton>
+                    <SocialButton href="https://instagram.com" label="인스타그램" className="bg-white text-[#2C313C] hover:bg-gray-200 show-icon">
+                        <InstagramIcon />
+                    </SocialButton>
+                    <SocialButton href="https://youtube.com" label="유튜브" className="bg-white text-[#2C313C] hover:bg-gray-200 show-icon">
+                        <YoutubeIcon />
+                    </SocialButton>
+                </div>
             </div>
           </div>
         </div>
@@ -211,13 +211,7 @@ function InstagramIcon() {
   );
 }
 
-function ProfileIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3 0-9 1.5-9 4.5V21h18v-2.5C21 15.5 15 14 12 14Z"/>
-    </svg>
-  );
-}
+
 
 function YoutubeIcon() {
   return (
@@ -232,13 +226,12 @@ function YoutubeIcon() {
    Service Icon Components
    --------------------------- */
 const ServiceIcons = {
-  // ✅ 기억퍼즐: public/img/icon_1.png 이미지를 사용
   puzzle: (
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_1.png"  // ← public/img/icon_1.png
-          alt="기억퍼즐 아이콘"
+          src="/img/1.png"
+          alt="AI 기억퍼즐 아이콘"
           fill
           sizes="96px"
           className="object-contain drop-shadow-md"
@@ -247,12 +240,12 @@ const ServiceIcons = {
       </div>
     </div>
   ),
-  book: (
+  game: (
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_2.png"  // ← public/img/icon_1.png
-          alt="라이프북 아이콘"
+          src="/img/2.png"
+          alt="인지 게임 아이콘"
           fill
           sizes="96px"
           className="object-contain drop-shadow-md"
@@ -265,8 +258,8 @@ const ServiceIcons = {
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_3.png"  // ← public/img/icon_3.png
-          alt="인지클래스 아이콘"
+          src="/img/3.png"
+          alt="인지 콘텐츠 아이콘"
           fill
           sizes="96px"
           className="object-contain drop-shadow-md"
@@ -279,7 +272,7 @@ const ServiceIcons = {
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_3.png"  // 스마트 인지관리 아이콘
+          src="/img/4.png"
           alt="스마트 인지관리 아이콘"
           fill
           sizes="96px"
@@ -289,26 +282,12 @@ const ServiceIcons = {
       </div>
     </div>
   ),
-  palette: (
+  book: (
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_4.png"  // ← public/img/icon_1.png
-          alt="마음색칠 아이콘"
-          fill
-          sizes="96px"
-          className="object-contain drop-shadow-md"
-          priority
-        />
-      </div>
-    </div>
-  ),
-  document: (
-    <div className="w-24 h-24 flex items-center justify-center mx-auto">
-      <div className="relative w-24 h-24">
-        <Image
-          src="/img/icon_5.png"  // ← public/img/icon_1.png
-          alt="활동자료 아이콘"
+          src="/img/5.png"
+          alt="스마트 워크북 아이콘"
           fill
           sizes="96px"
           className="object-contain drop-shadow-md"
@@ -321,22 +300,8 @@ const ServiceIcons = {
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_6.png"  // ← public/img/icon_1.png
-          alt="허브 아카데미 아이콘"
-          fill
-          sizes="96px"
-          className="object-contain drop-shadow-md"
-          priority
-        />
-      </div>
-    </div>
-  ),
-  clipboard: (
-    <div className="w-24 h-24 flex items-center justify-center mx-auto">
-      <div className="relative w-24 h-24">
-        <Image
-          src="/img/icon_7.png"  // ← public/img/icon_1.png
-          alt="시니어 종합검사 아이콘"
+          src="/img/6.png"
+          alt="스마트 교육 아이콘"
           fill
           sizes="96px"
           className="object-contain drop-shadow-md"
@@ -349,7 +314,7 @@ const ServiceIcons = {
     <div className="w-24 h-24 flex items-center justify-center mx-auto">
       <div className="relative w-24 h-24">
         <Image
-          src="/img/icon_8.png"  // ← public/img/icon_1.png
+          src="/img/7.png"
           alt="사회공헌 아이콘"
           fill
           sizes="96px"
@@ -362,16 +327,15 @@ const ServiceIcons = {
 };
 
 // Service Variants
+// Service Variants (Pastel Colors for new design)
 const SERVICE_VARIANTS = {
-  teal: { bg: "bg-gradient-to-br from-teal-400 to-teal-600", icon: ServiceIcons.puzzle },
-  blue: { bg: "bg-gradient-to-br from-blue-400 to-blue-600", icon: ServiceIcons.book },
-  purple: { bg: "bg-gradient-to-br from-purple-400 to-purple-600", icon: ServiceIcons.bulb },
-  gray: { bg: "bg-gradient-to-br from-gray-500 to-gray-700", icon: ServiceIcons.palette },
-  orange: { bg: "bg-gradient-to-br from-orange-400 to-red-500", icon: ServiceIcons.document },
-  yellow: { bg: "bg-gradient-to-br from-yellow-400 to-orange-500", icon: ServiceIcons.cap },
-  sky: { bg: "bg-gradient-to-br from-sky-400 to-blue-500", icon: ServiceIcons.clipboard },
-  whiteRed: { bg: "bg-white border-4 border-red-500", icon: ServiceIcons.heart },
-  indigo: { bg: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500", icon: ServiceIcons.smartCognitive },
+  cyan: { bg: "bg-cyan-50", icon: ServiceIcons.puzzle },
+  blue: { bg: "bg-blue-50", icon: ServiceIcons.game },
+  yellow: { bg: "bg-yellow-50", icon: ServiceIcons.bulb }, // Cognitive Content
+  pink: { bg: "bg-pink-50", icon: ServiceIcons.smartCognitive }, // Smart Cognitive
+  gray: { bg: "bg-gray-50", icon: ServiceIcons.book }, // Workbook
+  orange: { bg: "bg-orange-50", icon: ServiceIcons.cap }, // Education
+  purple: { bg: "bg-purple-50", icon: ServiceIcons.heart }, // Social
 } as const;
 
 // Types
@@ -379,77 +343,52 @@ type ServiceVariant = typeof SERVICE_VARIANTS[keyof typeof SERVICE_VARIANTS];
 
 interface ServiceType {
   id: string;
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   href: string;
   variant: ServiceVariant;
   selected?: boolean;
-}// Services Data
+  className?: string; // Layout class (col-span)
+  imageSrc?: string; // Full card image
+}
+
+// Services Data
 const SERVICES: ServiceType[] = [
   {
     id: "puzzle",
-    title: "기억퍼즐",
-    subtitle: "디지털 퍼즐 활동",
-    href: "/puzzle-home",   // ✅ Puzzle 프로젝트 대시보드로 이동
-    variant: SERVICE_VARIANTS.teal,
-  },
-  {
-    id: "lifebook",
-    title: "라이프북",
-    subtitle: "AI 자서전 만들기",
-    href: "/services/lifebook",
-    variant: SERVICE_VARIANTS.blue,
+    href: "/puzzle-home",
+    variant: SERVICE_VARIANTS.cyan,
+    imageSrc: "/img/1.png",
   },
   {
     id: "cognitive",
-    title: "인지클래스",
-    subtitle: "인지 건강 콘텐츠 체험",
     href: "/services/cognitive",
-    variant: SERVICE_VARIANTS.purple,
+    variant: SERVICE_VARIANTS.yellow,
+    imageSrc: "/img/3.png",
   },
   {
     id: "smart-cognitive",
-    title: "스마트 인지관리",
-    subtitle: "뇌 건강 검사 및 관리",
     href: "/services/smart-cognitive",
-    variant: SERVICE_VARIANTS.indigo,
+    variant: SERVICE_VARIANTS.pink,
+    imageSrc: "/img/4.png",
   },
   {
-    id: "coloring",
-    title: "마음색칠",
-    subtitle: "인지 훈련 컬러링 체험",
-    href: "/services/coloring",
+    id: "workbook",
+    href: "/services/lifebook",
     variant: SERVICE_VARIANTS.gray,
+    imageSrc: "/img/5.png",
   },
   {
-    id: "activities",
-    title: "활동자료",
-    subtitle: "활동지・학습지 모음",
-    href: "/services/activities",
-    variant: SERVICE_VARIANTS.orange,
-  },
-  {
-    id: "academy",
-    title: "허브 아카데미",
-    subtitle: "자격증 취득・자기계발 강좌",
+    id: "education",
     href: "/services/academy",
-    variant: SERVICE_VARIANTS.yellow,
-  },
-  {
-    id: "assessment",
-    title: "시니어 종합검사",
-    subtitle: "인지・정서・사회 기능 평가차트",
-    href: "/services/assessment",
-    variant: SERVICE_VARIANTS.sky,
+    variant: SERVICE_VARIANTS.orange,
+    imageSrc: "/img/6.png",
   },
   {
     id: "social",
-    title: "사회공헌 사업",
-    subtitle: "봉사・나눔 실천",
     href: "/services/social",
-    variant: SERVICE_VARIANTS.whiteRed,
-    selected: true,
+    variant: SERVICE_VARIANTS.purple,
+    imageSrc: "/img/7.png",
+    className: "sm:col-span-2 lg:col-span-2",
   },
 ];
-
-
