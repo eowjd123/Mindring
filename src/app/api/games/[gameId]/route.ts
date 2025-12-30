@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getSession } from "@/lib/auth-local";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 type MemoryAsset = {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ gam
     
     // 사용자 인증 확인
     const session = await getSession();
-    if (!session?.user?.userId) {
+    if (!session?.userId) {
       console.log("No authenticated user, saving score without user association");
       return NextResponse.json({ ok: true, saved: false }, { status: 201 });
     }
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ gam
     // DB에 저장
     const gameScore = await prisma.gameScore.create({
       data: {
-        userId: session.user.userId,
+        userId: session.userId,
         gameId,
         gameType,
         level: body.level || 1,
