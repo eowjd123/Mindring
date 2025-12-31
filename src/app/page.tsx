@@ -9,6 +9,8 @@ import ServiceCardClient from "./ServiceCardClient";
 import RecommendedSection from "@/components/main/RecommendedSection";
 import HeaderNav from "@/components/main/HeaderNav";
 
+export const dynamic = "force-dynamic";
+
 export default async function RootPage() {
   const user = await getSessionUser();
 
