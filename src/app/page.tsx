@@ -7,6 +7,7 @@ import { getSessionUser } from "@/lib/session";
 
 import ServiceCardClient from "./ServiceCardClient";
 import RecommendedSection from "@/components/main/RecommendedSection";
+import HeaderNav from "@/components/main/HeaderNav";
 
 export default async function RootPage() {
   const user = await getSessionUser();
@@ -75,14 +76,8 @@ export default async function RootPage() {
                 </Link>
 
                 {/* Main Nav Links */}
-                <nav className="hidden lg:flex items-center gap-8 font-bold text-gray-800 text-[16px]">
-                    <Link href="/puzzle-home" className="hover:text-purple-600 transition-colors">AI기억퍼즐</Link>
-                    <Link href="/games" className="hover:text-purple-600 transition-colors">인지게임</Link>
-                    <Link href="/services/cognitive" className="hover:text-purple-600 transition-colors">인지콘텐츠</Link>
-                    <Link href="/workbook" className="hover:text-purple-600 transition-colors">스마트워크북</Link>
-                    <Link href="/education" className="hover:text-purple-600 transition-colors">스마트교육</Link>
-                    <Link href="/smart-care" className="hover:text-purple-600 transition-colors">스마트인지관리</Link>
-                </nav>
+                {/* Main Nav Links */}
+                <HeaderNav isAuthenticated={!!user} />
 
                 {/* User Status / CRM */}
                 <div className="hidden md:flex items-center gap-4">
@@ -350,6 +345,7 @@ interface ServiceType {
   selected?: boolean;
   className?: string; // Layout class (col-span)
   imageSrc?: string; // Full card image
+  preparing?: boolean;
 }
 
 // Services Data
@@ -359,6 +355,12 @@ const SERVICES: ServiceType[] = [
     href: "/puzzle-home",
     variant: SERVICE_VARIANTS.cyan,
     imageSrc: "/img/1.png",
+  },
+  {
+    id: "lifebook",
+    href: "/services/lifebook",
+    variant: SERVICE_VARIANTS.blue,
+    imageSrc: "/img/2.png",
   },
   {
     id: "cognitive",
@@ -374,9 +376,10 @@ const SERVICES: ServiceType[] = [
   },
   {
     id: "workbook",
-    href: "/services/lifebook",
+    href: "/services/academy",
     variant: SERVICE_VARIANTS.gray,
     imageSrc: "/img/5.png",
+    preparing: true,
   },
   {
     id: "education",

@@ -18,6 +18,7 @@ interface ServiceCardClientProps {
   isAuthenticated: boolean;
   className?: string; // from previous step
   imageSrc?: string;
+  preparing?: boolean;
 }
 
 export default function ServiceCardClient({
@@ -29,11 +30,19 @@ export default function ServiceCardClient({
   isAuthenticated,
   className,
   imageSrc,
+  preparing,
 }: ServiceCardClientProps) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
 
   const handleClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // 준비중인 서비스
+    if (preparing) {
+      e.preventDefault();
+      alert("준비중인 서비스입니다.");
+      return;
+    }
+
     // 이미 로그인한 경우 바로 이동
     if (isAuthenticated) {
       return; // Link의 기본 동작 허용
